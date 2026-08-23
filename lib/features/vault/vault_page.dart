@@ -39,7 +39,7 @@ class VaultPage extends ConsumerWidget {
               children: [
                 if (!embedded)
                   Text(
-                    'Culture Tune',
+                    'しーるちょう',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,

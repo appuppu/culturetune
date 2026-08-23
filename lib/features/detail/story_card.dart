@@ -53,7 +53,7 @@ class _StorySharePreviewState extends State<_StorySharePreview> {
       await file.writeAsBytes(bytes!.buffer.asUint8List());
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: '${widget.item.title} #CultureTune');
+      ], text: '${widget.item.title} #しーるちょう');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -227,7 +227,7 @@ class StoryCard extends StatelessWidget {
           ),
           const Spacer(),
           Text(
-            'Culture Tune',
+            'しーるちょう',
             style: TextStyle(
               fontWeight: FontWeight.w800,
               color: CTColors.primary,

@@ -27,7 +27,7 @@ Future<void> maybeShowOnboarding(BuildContext context) async {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Culture Tuneへようこそ',
+              'しーるちょうへようこそ',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 20,

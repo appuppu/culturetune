@@ -47,7 +47,7 @@ class BlePresenceTransport implements BeamTransport {
         // アドバタイズ不可端末でもスキャン(=相手を見つける側)は続行
       }
 
-      // 周囲のCulture Tuneユーザーをスキャン
+      // 周囲のしーるちょうユーザーをスキャン
       _scanSub = FlutterBluePlus.onScanResults.listen(_onResults);
       await FlutterBluePlus.startScan(
         withServices: [_serviceGuid],

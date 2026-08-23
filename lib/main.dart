@@ -35,7 +35,7 @@ class CultureTuneApp extends ConsumerWidget {
     final palette = ref.watch(themeProvider);
     return MaterialApp(
       navigatorKey: navigatorKey,
-      title: 'Culture Tune',
+      title: 'しーるちょう',
       debugShowCheckedModeBanner: false,
       theme: buildThemeData(palette),
       home: const HomeShell(),

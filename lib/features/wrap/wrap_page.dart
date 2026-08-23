@@ -14,7 +14,7 @@ import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/thumb_image.dart';
 
-/// 今月のまとめ「かるちゅーレポ」。ストーリー画像として共有できる。
+/// 今月のまとめレポ。ストーリー画像として共有できる。
 class WrapPage extends ConsumerStatefulWidget {
   const WrapPage({super.key});
 
@@ -44,7 +44,7 @@ class _WrapPageState extends ConsumerState<WrapPage> {
       await file.writeAsBytes(bytes!.buffer.asUint8List());
       await Share.shareXFiles([
         XFile(file.path),
-      ], text: '${now.month}月のかるちゅーレポ #CultureTune');
+      ], text: '${now.month}月のしーるちょうレポ #しーるちょう');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
@@ -68,7 +68,7 @@ class _WrapPageState extends ConsumerState<WrapPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${now.month}月のかるちゅーレポ'),
+        title: Text('${now.month}月のレポ'),
         actions: [
           IconButton(
             onPressed: monthItems.isEmpty || _sharing ? null : _share,
@@ -153,7 +153,7 @@ class _WrapCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$month月のかるちゅーレポ',
+            '$month月のしーるちょうレポ',
             style: TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.w800,
@@ -257,7 +257,7 @@ class _WrapCard extends StatelessWidget {
           const SizedBox(height: 16),
           Center(
             child: Text(
-              'Culture Tune',
+              'しーるちょう',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 color: CTColors.primary,

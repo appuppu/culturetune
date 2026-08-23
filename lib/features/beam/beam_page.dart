@@ -499,7 +499,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
   }
 
   String _statusLabel() {
-    if (!_radarOn) return 'オンにすると近くのCulture Tuneユーザーが見えるよ';
+    if (!_radarOn) return 'オンにすると近くのしーるちょうユーザーが見えるよ';
     return switch (_status) {
       BeamPresenceStatus.advertising =>
         _peers.isEmpty ? 'さがし中…' : '${_peers.length}人 みつけた!',
