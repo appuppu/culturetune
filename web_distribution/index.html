@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Culture Tune のカード</title>
+<style>
+  :root { color-scheme: light; }
+  * { margin: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Hiragino Sans", sans-serif;
+    background: #FFF7F9; color: #33272A; min-height: 100vh;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+  }
+  .card {
+    background: #fff; border-radius: 14px; padding: 20px; width: 100%;
+    max-width: 340px; text-align: center;
+    box-shadow: 0 8px 24px rgba(255,107,157,.18);
+    border: 2px solid #FF6B9D;
+  }
+  .thumb { width: 100%; border-radius: 12px; margin-bottom: 12px; display: none; }
+  .from { font-size: 12px; color: #9A8F94; margin-bottom: 4px; }
+  h1 { font-size: 18px; margin-bottom: 14px; word-break: break-word; }
+  .btn {
+    display: block; padding: 14px; border-radius: 16px; text-decoration: none;
+    font-weight: 700; margin-bottom: 10px;
+  }
+  .primary { background: #FF6B9D; color: #fff; }
+  .sub { background: #F4EDEF; color: #33272A; font-size: 13px; }
+  .note { font-size: 11px; color: #9A8F94; margin-top: 8px; line-height: 1.6; }
+  .broken { color: #9A8F94; }
+</style>
+</head>
+<body>
+<div class="card">
+  <img id="thumb" class="thumb" alt="">
+  <div id="from" class="from"></div>
+  <h1 id="title">カードを読み込み中…</h1>
+  <a id="open" class="btn primary" href="#">アプリで受け取る</a>
+  <a class="btn sub" href="#">Culture Tuneをダウンロード(準備中)</a>
+  <div class="note">
+    カードのデータはこのリンクの中に入っていて、サーバーには保存されていません。
+  </div>
+</div>
+<script>
+(function () {
+  var frag = location.hash.slice(1);
+  var titleEl = document.getElementById('title');
+  if (!frag) { titleEl.textContent = 'カードが見つからないよ'; titleEl.className='broken'; return; }
+  try {
+    // base64url → JSON
+    var b64 = frag.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    var data = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    var card = data.card || {};
+    var sender = data.sender || {};
+    titleEl.textContent = card.title || 'カード';
+    if (sender.name) {
+      document.getElementById('from').textContent = sender.name + ' からのカード';
+    }
+    if (card.thumbUrl) {
+      var img = document.getElementById('thumb');
+      img.src = card.thumbUrl; img.style.display = 'block';
+    }
+    // インストール済みならカスタムスキームでアプリへ(データごと引き継ぐ)
+    document.getElementById('open').href = 'culturetune://card#' + frag;
+  } catch (e) {
+    titleEl.textContent = 'カードを読み込めなかったよ';
+    titleEl.className = 'broken';
+  }
+})();
+</script>
+</body>
+</html>

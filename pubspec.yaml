@@ -1,0 +1,96 @@
+name: culture_tune
+description: "Culture Tune - ポップ・キュートな偏愛カルチャーログ"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.9.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # 状態管理・ルーティング
+  flutter_riverpod: ^2.6.1
+  go_router: ^14.6.2
+
+  # ローカルDB (drift = SQLite)
+  drift: ^2.22.1
+  drift_flutter: ^0.2.4
+  path_provider: ^2.1.5
+  path: ^1.9.0
+
+  # HTTP / API
+  http: ^1.2.2
+
+  # ユーティリティ
+  uuid: ^4.5.1
+
+  # UI
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.2
+  cached_network_image: ^3.4.1
+
+  # YouTube インライン再生 (公式IFrame Player)
+  youtube_player_iframe: ^6.0.2
+
+  # カメラスキャン (ISBNバーコード / QR)
+  mobile_scanner: ^7.0.0
+
+  # QR生成 (Beam交換)
+  qr_flutter: ^4.1.0
+
+  # 写真 (Food)
+  image_picker: ^1.1.2
+
+  # 写真クロップ (Food: 正方形フレーム)
+  image_cropper: ^12.2.1
+
+  # 位置情報 (Food / iOS)
+  geolocator: ^13.0.2
+
+  # 外部マップ起動 (Food / Android)
+  url_launcher: ^6.3.1
+
+  # カード画像共有
+  share_plus: ^10.1.4
+
+  # iOS限定マップ
+  apple_maps_flutter: ^1.3.0
+
+  # BLE (Beam近接検知)
+  flutter_blue_plus: ^1.35.3
+  flutter_ble_peripheral: ^1.2.6
+
+  # プロフィール保存
+  shared_preferences: ^2.3.4
+  google_mlkit_subject_segmentation: ^0.2.1
+  sensors_plus: ^7.1.0
+  record: ^7.1.1
+  audioplayers: ^6.8.1
+  flutter_staggered_grid_view: ^0.7.0
+  webview_flutter: ^4.14.1
+  app_links: ^7.2.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^5.0.0
+  drift_dev: ^2.22.1
+  build_runner: ^2.4.14
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: assets/icon/icon.png
+  remove_alpha_ios: true
+  adaptive_icon_background: "#FF6B9D"
+  adaptive_icon_foreground: assets/icon/icon.png
+
+flutter:
+  uses-material-design: true

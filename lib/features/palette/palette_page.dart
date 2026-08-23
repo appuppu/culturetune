@@ -1,0 +1,292 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../app/providers.dart';
+import '../../core/db/app_database.dart';
+import '../../core/models/culture_category.dart';
+import '../../core/theme/tokens.dart';
+import '../../core/widgets/sticker_image.dart';
+import '../beam/beam_profile_provider.dart';
+import '../detail/culture_modal.dart';
+import 'create_sticker_page.dart';
+import '../../core/stickers/voice_player.dart';
+import 'sticker_exchange.dart';
+
+/// シール素材のグリッド(シールタブに埋め込まれる)
+class PaletteBody extends ConsumerWidget {
+  const PaletteBody({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stickers = ref.watch(stickersProvider);
+
+    return stickers.when(
+      data: (list) => list.isEmpty
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.auto_fix_high_rounded,
+                    size: 56,
+                    color: CTColors.primary,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    '写真を選ぶだけで\n切り抜きシールがつくれるよ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: CTColors.textSub, height: 1.6),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton.icon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const CreateStickerPage(),
+                      ),
+                    ),
+                    icon: const Icon(Icons.add_rounded, size: 18),
+                    label: const Text('写真からシールをつくる'),
+                  ),
+                ],
+              ),
+            )
+          : GridView.builder(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+              ),
+              itemCount: list.length,
+              itemBuilder: (_, i) => _StickerTile(sticker: list[i]),
+            ),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (e, _) => Center(child: Text('エラー: \$e')),
+    );
+  }
+}
+
+class _StickerTile extends ConsumerWidget {
+  const _StickerTile({required this.sticker});
+
+  final Sticker sticker;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final repo = ref.watch(stickerRepositoryProvider);
+
+    return GestureDetector(
+      onTap: () => showStickerSheet(context, ref, sticker),
+      child: Container(
+        decoration: BoxDecoration(
+          color: CTColors.surface,
+          borderRadius: BorderRadius.circular(CTRadius.card),
+          boxShadow: ctCardShadow,
+        ),
+        padding: const EdgeInsets.all(8),
+        child: Stack(
+          children: [
+            Center(
+              child: StickerImage(
+                path: repo.resolve(sticker.imagePath),
+                texture: sticker.texture,
+              ),
+            ),
+            if (sticker.audioPath != null)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: CTColors.mint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.volume_up_rounded,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            if (sticker.linkedItemId != null)
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: CTColors.primary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.link_rounded,
+                    size: 10,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            if (sticker.source == CardSource.beam)
+              Positioned(
+                top: 0,
+                left: 0,
+                child: BeamAvatar(
+                  name: sticker.creatorName,
+                  color: colorFromHex(sticker.creatorColor),
+                  radius: 8,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// シール詳細シート: 大きなプレビュー+クレジット+紐付けカルチャー+操作
+Future<void> showStickerSheet(
+  BuildContext context,
+  WidgetRef ref,
+  Sticker sticker,
+) {
+  final repo = ref.read(stickerRepositoryProvider);
+  return showModalBottomSheet(
+    context: context,
+    backgroundColor: CTColors.bgBase,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
+    ),
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 240,
+              child: StickerImage(
+                path: repo.resolve(sticker.imagePath),
+                texture: sticker.texture,
+              ),
+            ),
+            const SizedBox(height: 12),
+            // シール裏面のクレジット
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                BeamAvatar(
+                  name: sticker.creatorName,
+                  color: colorFromHex(sticker.creatorColor),
+                  radius: 10,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Created by ${sticker.creatorName} · '
+                  '${sticker.createdAt.year}/${sticker.createdAt.month}/${sticker.createdAt.day}',
+                  style: TextStyle(fontSize: 12, color: CTColors.textSub),
+                ),
+              ],
+            ),
+            if (sticker.audioPath != null) ...[
+              const SizedBox(height: 10),
+              Consumer(
+                builder: (context, sheetRef, _) => FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: CTColors.mint,
+                    foregroundColor: CTColors.textMain,
+                  ),
+                  onPressed: () =>
+                      playVoice(sheetRef, repo.resolve(sticker.audioPath!)),
+                  icon: const Icon(Icons.volume_up_rounded, size: 18),
+                  label: const Text('ボイスを聞く'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            _LinkedCultureButton(sticker: sticker, sheetContext: sheetContext),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      Navigator.pop(sheetContext);
+                      await shareStickerWithMeta(ref, sticker);
+                    },
+                    icon: const Icon(Icons.ios_share_rounded, size: 18),
+                    label: const Text('送る'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.redAccent,
+                    ),
+                    onPressed: () async {
+                      await ref
+                          .read(stickerRepositoryProvider)
+                          .deleteSticker(sticker);
+                      if (sheetContext.mounted) Navigator.pop(sheetContext);
+                    },
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    label: const Text('削除'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+/// 紐付けカルチャーを開くボタン(未設定なら非表示)
+class _LinkedCultureButton extends ConsumerWidget {
+  const _LinkedCultureButton({
+    required this.sticker,
+    required this.sheetContext,
+  });
+
+  final Sticker sticker;
+  final BuildContext sheetContext;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final linkedId = sticker.linkedItemId;
+    if (linkedId == null) return const SizedBox.shrink();
+
+    return FutureBuilder<CultureItem?>(
+      future: ref.read(databaseProvider).findItem(linkedId),
+      builder: (context, snapshot) {
+        final item = snapshot.data;
+        if (item == null) return const SizedBox.shrink();
+        return SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: item.category.color,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(sheetContext);
+              openCultureItem(context, ref, item);
+            },
+            icon: Icon(
+              item.category == CultureCategory.food
+                  ? Icons.place_rounded
+                  : Icons.play_arrow_rounded,
+            ),
+            label: Text(
+              item.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
