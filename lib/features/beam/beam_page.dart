@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -78,27 +79,67 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     if (mounted) setState(() {});
   }
 
-  StreamSubscription<({String name, Uint8List data})>? _incomingSub;
+  StreamSubscription<({String name, String code, Uint8List data})>?
+  _incomingSub;
 
-  /// レーダー経由でBluetooth着信したシール/シール帳を受け取る
-  Future<void> _onIncoming(({String name, Uint8List data}) event) async {
+  /// レーダー経由でBluetooth着信したシール/シール帳を受け取る。
+  /// 安全のため、渡す側の画面に出ているコードを入力して照合する。
+  Future<void> _onIncoming(
+    ({String name, String code, Uint8List data}) event,
+  ) async {
     if (!mounted) return;
     HapticFeedback.mediumImpact();
+    final controller = TextEditingController();
+    String? errorText;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('${event.name} からとどいたよ!'),
-        content: const Text('うけとる?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('やめとく'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('うけとる'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          void submit() {
+            if (controller.text == event.code) {
+              Navigator.pop(dialogContext, true);
+            } else {
+              setDialogState(() => errorText = 'コードがちがうよ');
+            }
+          }
+
+          return AlertDialog(
+            title: Text('${event.name} からとどいたよ!'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('あいての画面に出ている4けたのコードを入力してね'),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  maxLength: 4,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 8,
+                  ),
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '0000',
+                    errorText: errorText,
+                  ),
+                  onSubmitted: (_) => submit(),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('やめとく'),
+              ),
+              FilledButton(onPressed: submit, child: const Text('うけとる')),
+            ],
+          );
+        },
       ),
     );
     if (ok != true || !mounted) return;
@@ -161,6 +202,8 @@ class _BeamPageState extends ConsumerState<BeamPage> {
 
     final profile = await ref.read(beamProfileProvider.future);
     if (!mounted) return;
+    // 安全のための確認コード(あいてが入力する)
+    final code = (1000 + Random().nextInt(9000)).toString();
     final progress = ValueNotifier<(double?, String)>((null, 'つなげてるよ…'));
     var dialogOpen = true;
     unawaited(
@@ -174,6 +217,18 @@ class _BeamPageState extends ConsumerState<BeamPage> {
             builder: (_, value, _) => Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Text('あいてにこのコードを教えてね', style: TextStyle(fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(
+                  code,
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 10,
+                    color: CTColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 Text(value.$2),
                 const SizedBox(height: 12),
                 LinearProgressIndicator(
@@ -190,6 +245,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     final ok = await BleTransfer.sendToPeer(
       remoteId: peer.id,
       senderName: profile.name,
+      code: code,
       data: bytes,
       onProgress: (p, label) => progress.value = (p, label),
     );

@@ -49,6 +49,7 @@ abstract final class BleTransfer {
   static Future<bool> sendToPeer({
     required String remoteId,
     required String senderName,
+    required String code,
     required Uint8List data,
     required void Function(double progress, String label) onProgress,
   }) async {
@@ -66,7 +67,9 @@ abstract final class BleTransfer {
       );
 
       await meta.write(
-        utf8.encode(jsonEncode({'size': data.length, 'name': senderName})),
+        utf8.encode(
+          jsonEncode({'size': data.length, 'name': senderName, 'code': code}),
+        ),
       );
 
       final chunkSize = (device.mtuNow - 3).clamp(20, 512);

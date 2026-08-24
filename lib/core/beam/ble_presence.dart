@@ -26,10 +26,12 @@ class BlePresenceTransport implements BeamTransport {
   /// スキャン診断: 周囲に見えているBLE機器数(しーるちょー以外も含む)
   final ValueNotifier<int> nearbyDeviceCount = ValueNotifier(0);
 
-  /// レーダーON中にBluetoothで送りつけられたデータ(名前, PNGバイト列)
+  /// レーダーON中にBluetoothで届いたデータ(名前, 確認コード, PNGバイト列)
   final _incomingController =
-      StreamController<({String name, Uint8List data})>.broadcast();
-  Stream<({String name, Uint8List data})> get incoming =>
+      StreamController<
+        ({String name, String code, Uint8List data})
+      >.broadcast();
+  Stream<({String name, String code, Uint8List data})> get incoming =>
       _incomingController.stream;
 
   final _allSeen = <String>{};
@@ -94,6 +96,7 @@ class BlePresenceTransport implements BeamTransport {
                 if (data != null && !_incomingController.isClosed) {
                   _incomingController.add((
                     name: map['name'] as String? ?? 'ともだち',
+                    code: map['code'] as String? ?? '',
                     data: data,
                   ));
                 }

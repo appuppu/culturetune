@@ -19,6 +19,9 @@ class BeamCard {
     required this.oshiLevel,
     required this.moodTags,
     this.moodColor,
+    this.lat,
+    this.lng,
+    this.placeName,
   });
 
   final int version;
@@ -35,6 +38,9 @@ class BeamCard {
   final int oshiLevel;
   final List<String> moodTags;
   final String? moodColor; // hex文字列 (#FF6B9D)
+  final double? lat; // ご飯カードのマップ用
+  final double? lng;
+  final String? placeName;
 
   /// 手持ちのカードから交換用パケットを作る(メモ・位置情報は除外)
   factory BeamCard.fromItem(
@@ -54,6 +60,9 @@ class BeamCard {
       oshiLevel: item.oshiLevel,
       moodTags: (jsonDecode(item.moodTags) as List).cast<String>(),
       moodColor: item.moodColor,
+      lat: item.lat,
+      lng: item.lng,
+      placeName: item.placeName,
     );
   }
 
@@ -71,6 +80,9 @@ class BeamCard {
       'oshiLevel': oshiLevel,
       'moodTags': moodTags,
       if (moodColor != null) 'moodColor': moodColor,
+      if (lat != null) 'lat': lat,
+      if (lng != null) 'lng': lng,
+      if (placeName != null) 'placeName': placeName,
     },
   };
 
@@ -93,6 +105,9 @@ class BeamCard {
         oshiLevel: card['oshiLevel'] as int? ?? 3,
         moodTags: (card['moodTags'] as List? ?? const []).cast<String>(),
         moodColor: card['moodColor'] as String?,
+        lat: (card['lat'] as num?)?.toDouble(),
+        lng: (card['lng'] as num?)?.toDouble(),
+        placeName: card['placeName'] as String?,
       );
     } catch (_) {
       return null;

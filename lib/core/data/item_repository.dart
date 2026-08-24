@@ -75,6 +75,15 @@ class ItemRepository {
       localImagePath: null,
     );
 
+    // 音楽/動画はexternalId=YouTubeのvideoId。受け取り側でも
+    // タップ再生できるようdetailJsonを再構築する
+    final isMedia =
+        card.category == CultureCategory.music ||
+        card.category == CultureCategory.video;
+    final detailJson = isMedia && card.externalId != null
+        ? jsonEncode({'videoId': card.externalId})
+        : '{}';
+
     await _db.upsertItem(
       CultureItemsCompanion.insert(
         id: id,
@@ -88,6 +97,10 @@ class ItemRepository {
         oshiLevel: Value(card.oshiLevel),
         moodTags: Value(jsonEncode(card.moodTags)),
         moodColor: Value(card.moodColor),
+        detailJson: Value(detailJson),
+        lat: Value(card.lat),
+        lng: Value(card.lng),
+        placeName: Value(card.placeName),
         source: const Value(CardSource.beam),
         beamFrom: Value(card.senderName),
         beamFromColor: Value(card.senderColor),

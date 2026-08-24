@@ -330,6 +330,7 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
   // 受信ポストの状態
   private var expectedSize = 0
   private var senderName = ""
+  private var senderCode = ""
   private var inboxBuffer = Data()
 
   var onEvent: ((String, Any?) -> Void)?
@@ -404,6 +405,7 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
         if let json = try? JSONSerialization.jsonObject(with: value) as? [String: Any] {
           expectedSize = json["size"] as? Int ?? 0
           senderName = json["name"] as? String ?? "ともだち"
+          senderCode = json["code"] as? String ?? ""
           inboxBuffer = Data()
           onEvent?("inboxStart", ["name": senderName, "size": expectedSize])
         }
@@ -415,7 +417,11 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
           inboxBuffer = Data()
           onEvent?(
             "inboxData",
-            ["name": senderName, "data": FlutterStandardTypedData(bytes: received)])
+            [
+              "name": senderName,
+              "code": senderCode,
+              "data": FlutterStandardTypedData(bytes: received),
+            ])
         }
       }
     }

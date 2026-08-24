@@ -33,6 +33,9 @@ Map<String, dynamic> _linkOf(CultureItem item) => {
   if (item.thumbUrl != null) 'thumbUrl': item.thumbUrl,
   if (item.externalId != null) 'externalId': item.externalId,
   if (item.url != null) 'url': item.url,
+  if (item.lat != null) 'lat': item.lat,
+  if (item.lng != null) 'lng': item.lng,
+  if (item.placeName != null) 'placeName': item.placeName,
 };
 
 /// シールを「メタデータ入りPNG」としてLINE等の共有シートで送る。
@@ -424,6 +427,9 @@ Future<String?> _restoreLink(
             url: link['url'] as String?,
             oshiLevel: 3,
             moodTags: const [],
+            lat: (link['lat'] as num?)?.toDouble(),
+            lng: (link['lng'] as num?)?.toDouble(),
+            placeName: link['placeName'] as String?,
           ),
         );
   } catch (_) {
