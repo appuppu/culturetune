@@ -213,21 +213,130 @@ class _EmptyBook extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(28, 40, 28, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(Icons.menu_book_rounded, size: 48, color: CTColors.primary),
+            const SizedBox(height: 10),
+            Text(
+              'タップすると音が鳴る\nじぶんだけのシール帳',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                height: 1.5,
+                color: CTColors.textMain,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '写真がシールになって、曲や地図を貼れる。\nたとえばこんな使いかた:',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: CTColors.textSub,
+                height: 1.6,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const _UseCaseCard(
+              icon: Icons.favorite_rounded,
+              colorIndex: 0,
+              title: '推し活ログ',
+              body: '推しの写真を切り抜きシールに。新曲カードを貼れば、タップでその場で再生できるよ',
+            ),
+            const _UseCaseCard(
+              icon: Icons.flight_takeoff_rounded,
+              colorIndex: 5,
+              title: '旅行のきろく',
+              body: '旅の写真をまとめてシール化。ごはんの店カードはタップで地図がひらくよ',
+            ),
+            const _UseCaseCard(
+              icon: Icons.swap_horiz_rounded,
+              colorIndex: 1,
+              title: '交換日記・寄せ書き',
+              body: 'ともだちに渡して追いデコしてもらおう。メッセージシールやボイスで声も残せる',
+            ),
+            const SizedBox(height: 18),
+            FilledButton.icon(
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: onCreate,
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('最初のシール帳をつくる'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 空のシール帳タブに出す使いかた例カード
+class _UseCaseCard extends StatelessWidget {
+  const _UseCaseCard({
+    required this.icon,
+    required this.colorIndex,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final int colorIndex;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final color =
+        CTColors.moodPalette[colorIndex % CTColors.moodPalette.length];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: CTColors.surface,
+        borderRadius: BorderRadius.circular(CTRadius.card),
+        boxShadow: ctCardShadow,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(Icons.menu_book_rounded, size: 56, color: CTColors.primary),
-          const SizedBox(height: 12),
-          Text(
-            'タップすると音楽や動画が鳴る\n自分だけのシール帳をつくろう',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: CTColors.textSub, height: 1.6),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.18),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 20, color: color),
           ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: onCreate,
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('最初のシール帳をつくる'),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  body,
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    height: 1.5,
+                    color: CTColors.textSub,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
