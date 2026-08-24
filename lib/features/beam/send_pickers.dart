@@ -8,6 +8,125 @@ import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
 import '../book/pages_page.dart';
 
+/// シールを複数選ぶ(最大[max]枚)。空/キャンセルはnull
+Future<List<Sticker>?> pickStickersForSend(
+  BuildContext context,
+  WidgetRef ref, {
+  int max = 10,
+}) async {
+  final db = ref.read(databaseProvider);
+  final stickers = await db.watchStickers().first;
+  if (!context.mounted) return null;
+  if (stickers.isEmpty) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('まずシールタブでシールをつくってね')));
+    return null;
+  }
+  final repo = ref.read(stickerRepositoryProvider);
+  final selected = <String>{};
+  return showModalBottomSheet<List<Sticker>>(
+    context: context,
+    backgroundColor: CTColors.bgBase,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
+    ),
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (context, setSheetState) => SafeArea(
+        child: SizedBox(
+          height: MediaQuery.of(sheetContext).size.height * 0.6,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Text(
+                  selected.isEmpty
+                      ? 'わたすシールを選んでね(最大$max枚)'
+                      : '${selected.length}枚えらんだよ',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 4,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                  ),
+                  itemCount: stickers.length,
+                  itemBuilder: (_, i) {
+                    final sticker = stickers[i];
+                    final isOn = selected.contains(sticker.id);
+                    return GestureDetector(
+                      onTap: () => setSheetState(() {
+                        if (isOn) {
+                          selected.remove(sticker.id);
+                        } else if (selected.length < max) {
+                          selected.add(sticker.id);
+                        }
+                      }),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: CTColors.surface,
+                          borderRadius: BorderRadius.circular(CTRadius.card),
+                          border: Border.all(
+                            color: isOn ? CTColors.primary : Colors.transparent,
+                            width: 2,
+                          ),
+                        ),
+                        child: Stack(
+                          children: [
+                            Center(
+                              child: Image.file(
+                                File(repo.resolve(sticker.imagePath)),
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                            if (isOn)
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: Icon(
+                                  Icons.check_circle_rounded,
+                                  size: 18,
+                                  color: CTColors.primary,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: selected.isEmpty
+                        ? null
+                        : () => Navigator.pop(sheetContext, [
+                            for (final s in stickers)
+                              if (selected.contains(s.id)) s,
+                          ]),
+                    child: Text(
+                      selected.isEmpty ? 'えらんでね' : '${selected.length}枚をわたす',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 /// シールを1つ選ぶ(選ぶだけ。送り方は呼び出し側が決める)
 Future<Sticker?> pickStickerForSend(BuildContext context, WidgetRef ref) async {
   final db = ref.read(databaseProvider);

@@ -17,6 +17,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
 import '../palette/sticker_exchange.dart';
 import 'beam_profile_provider.dart';
+import 'exchange_history.dart';
 import 'send_pickers.dart';
 
 final beamTransportProvider = Provider<BlePresenceTransport>((ref) {
@@ -196,7 +197,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
             ),
             ListTile(
               leading: const Icon(Icons.auto_fix_high_rounded),
-              title: const Text('シールをわたす'),
+              title: const Text('シールをわたす(まとめてOK)'),
               onTap: () => Navigator.pop(sheetContext, 'sticker'),
             ),
             ListTile(
@@ -211,14 +212,19 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     if (action == null || !mounted) return;
 
     Uint8List? bytes;
+    String label;
     if (action == 'sticker') {
-      final sticker = await pickStickerForSend(context, ref);
-      if (sticker == null || !mounted) return;
-      bytes = await buildStickerSharePng(ref, sticker);
+      final stickers = await pickStickersForSend(context, ref);
+      if (stickers == null || stickers.isEmpty || !mounted) return;
+      bytes = stickers.length == 1
+          ? await buildStickerSharePng(ref, stickers.first)
+          : await buildStickerBundle(ref, stickers);
+      label = stickers.length == 1 ? 'シール' : 'シール×${stickers.length}';
     } else {
       final page = await pickPageForSend(context, ref);
       if (page == null || !mounted) return;
       bytes = await buildPageSharePng(ref, page);
+      label = page.title.isEmpty ? 'シール帳' : 'シール帳「${page.title}」';
     }
     if (!mounted) return;
 
@@ -287,6 +293,15 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     }
     if (!mounted) return;
     HapticFeedback.mediumImpact();
+    if (result == SendResult.sent) {
+      await recordExchange(
+        ref,
+        direction: BeamDirection.sent,
+        peerName: peer.displayName,
+        label: label,
+      );
+    }
+    if (!mounted) return;
     final message = switch (result) {
       SendResult.sent => '${peer.displayName} にとどけたよ!',
       SendResult.rejected => '${peer.displayName} にことわられちゃった…',
@@ -439,61 +454,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     );
   }
 
-  void _showHistory() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: CTColors.bgBase,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(CTRadius.sheet),
-        ),
-      ),
-      builder: (_) => Consumer(
-        builder: (context, ref, _) {
-          final list = ref.watch(beamHistoryProvider).valueOrNull ?? [];
-          return SafeArea(
-            child: list.isEmpty
-                ? Padding(
-                    padding: EdgeInsets.all(32),
-                    child: Text(
-                      'まだ交換履歴がないよ',
-                      style: TextStyle(color: CTColors.textSub),
-                    ),
-                  )
-                : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: list.length,
-                    itemBuilder: (_, i) {
-                      final b = list[i];
-                      final isSent = b.direction == BeamDirection.sent;
-                      return ListTile(
-                        leading: BeamAvatar(
-                          name: b.peerName,
-                          color: colorFromHex(b.peerColor),
-                          radius: 16,
-                        ),
-                        title: Text(
-                          b.peerName,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        subtitle: Text(
-                          '${b.beamedAt.year}/${b.beamedAt.month}/${b.beamedAt.day}',
-                        ),
-                        trailing: Icon(
-                          isSent
-                              ? Icons.call_made_rounded
-                              : Icons.call_received_rounded,
-                          size: 18,
-                          color: isSent ? CTColors.primary : CTColors.mint,
-                        ),
-                      );
-                    },
-                  ),
-          );
-        },
-      ),
-    );
-  }
+  void _showHistory() => showExchangeHistorySheet(context);
 
   @override
   Widget build(BuildContext context) {

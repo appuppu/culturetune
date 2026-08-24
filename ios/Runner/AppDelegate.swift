@@ -191,6 +191,31 @@ import Vision
       }
     }
 
+    // テーマ連動のアプリアイコン切替
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let iconChannel = FlutterMethodChannel(
+        name: "culturetune/app_icon",
+        binaryMessenger: controller.binaryMessenger
+      )
+      iconChannel.setMethodCallHandler { call, result in
+        guard call.method == "set" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        let args = call.arguments as? [String: Any]
+        let name = args?["name"] as? String
+        DispatchQueue.main.async {
+          guard UIApplication.shared.supportsAlternateIcons else {
+            result(false)
+            return
+          }
+          UIApplication.shared.setAlternateIconName(name) { error in
+            result(error == nil)
+          }
+        }
+      }
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

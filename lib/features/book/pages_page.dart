@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -14,6 +15,7 @@ import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/stickers/page_renderer.dart';
 import '../palette/sticker_exchange.dart';
+import '../beam/exchange_history.dart';
 import 'element_view.dart';
 import 'page_editor_page.dart';
 import 'page_models.dart';
@@ -82,6 +84,12 @@ class _PagesPageState extends ConsumerState<PagesPage> {
             right: 10,
             child: Row(
               children: [
+                _FloatingAction(
+                  icon: Icons.history_rounded,
+                  tooltip: '交換のきろく',
+                  onTap: () => showExchangeHistorySheet(context),
+                ),
+                const SizedBox(width: 8),
                 _FloatingAction(
                   icon: _grid
                       ? Icons.fullscreen_rounded
@@ -468,10 +476,19 @@ Future<void> sharePageFromList(
             onTap: () => Navigator.pop(sheetContext, 'meta'),
           ),
           ListTile(
-            leading: const Icon(Icons.image_rounded),
-            title: const Text('画像として共有・保存'),
+            leading: const Icon(Icons.save_alt_rounded),
+            title: const Text('カメラロールに保存'),
             subtitle: const Text(
-              'インスタのストーリーなどに。見た目だけの画像(データなし)',
+              'インスタのストーリーなどに使える画像(データなし)',
+              style: TextStyle(fontSize: 12),
+            ),
+            onTap: () => Navigator.pop(sheetContext, 'save'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.ios_share_rounded),
+            title: const Text('画像を共有'),
+            subtitle: const Text(
+              '共有シートからアプリを選んで送る',
               style: TextStyle(fontSize: 12),
             ),
             onTap: () => Navigator.pop(sheetContext, 'flat'),
@@ -499,6 +516,23 @@ Future<void> sharePageFromList(
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/book_${page.id}.png');
   await file.writeAsBytes(png);
+  if (action == 'save') {
+    try {
+      await Gal.putImage(file.path);
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('カメラロールに保存したよ')));
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存できなかった…写真へのアクセスを許可してね($e)')));
+      }
+    }
+    return;
+  }
   await Share.shareXFiles([XFile(file.path)]);
 }
 

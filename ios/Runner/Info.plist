@@ -54,6 +54,8 @@
 	<string>シールにボイスを録音するために使います</string>
 	<key>NSCameraUsageDescription</key>
 	<string>本のバーコード読み取り・QRカード交換・ごはんの写真撮影に使います</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>シール帳の画像をカメラロールに保存するために使います</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>ごはんカードに載せる写真を選ぶために使います</string>
 	<key>NSLocationWhenInUseUsageDescription</key>

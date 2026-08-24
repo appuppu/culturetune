@@ -21,6 +21,7 @@ import '../../core/stickers/page_renderer.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/stickers/sticker_share.dart';
 import '../beam/beam_profile_provider.dart';
+import '../beam/exchange_history.dart';
 import '../book/page_models.dart';
 
 /// 埋め込みデータの上限(これを超えるページは平坦画像のみで送る)
@@ -50,11 +51,14 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
   ], text: 'シールをあげる! しーるちょーの交換タブ「受け取る」で使えるよ');
 }
 
-/// シールのメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)
-Future<Uint8List> buildStickerSharePng(WidgetRef ref, Sticker sticker) async {
+/// シール1枚ぶんの共有メタデータ(includePng=trueで加工済みPNGも含める)
+Future<Map<String, dynamic>> _stickerShareMeta(
+  WidgetRef ref,
+  Sticker sticker, {
+  bool includePng = false,
+}) async {
   final repo = ref.read(stickerRepositoryProvider);
   final db = ref.read(databaseProvider);
-  final bytes = await File(repo.resolve(sticker.imagePath)).readAsBytes();
 
   Map<String, dynamic>? link;
   if (sticker.linkedItemId != null) {
@@ -79,7 +83,7 @@ Future<Uint8List> buildStickerSharePng(WidgetRef ref, Sticker sticker) async {
     }
   }
 
-  final meta = {
+  return {
     'v': 2,
     'kind': 'culturetune_sticker',
     'creatorName': sticker.creatorName,
@@ -91,9 +95,35 @@ Future<Uint8List> buildStickerSharePng(WidgetRef ref, Sticker sticker) async {
     if (rawB64 != null) 'raw': rawB64,
     if (rawB64 != null) 'rawIsCutout': sticker.rawIsCutout,
     if (sticker.borderColor != null) 'borderColor': sticker.borderColor,
+    if (includePng)
+      'png': base64Encode(
+        await File(repo.resolve(sticker.imagePath)).readAsBytes(),
+      ),
   };
+}
 
+/// シールのメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)
+Future<Uint8List> buildStickerSharePng(WidgetRef ref, Sticker sticker) async {
+  final repo = ref.read(stickerRepositoryProvider);
+  final bytes = await File(repo.resolve(sticker.imagePath)).readAsBytes();
+  final meta = await _stickerShareMeta(ref, sticker);
   return StickerShare.embed(bytes, meta);
+}
+
+/// 複数シールの「まとめ袋」(JSONバイト列)。BLEその場交換専用
+Future<Uint8List> buildStickerBundle(
+  WidgetRef ref,
+  List<Sticker> stickers,
+) async {
+  final entries = [
+    for (final sticker in stickers)
+      await _stickerShareMeta(ref, sticker, includePng: true),
+  ];
+  return Uint8List.fromList(
+    utf8.encode(
+      jsonEncode({'kind': 'culturetune_bundle', 'stickers': entries}),
+    ),
+  );
 }
 
 /// シール帳ページを送る。
@@ -352,6 +382,11 @@ Future<void> importStickerFromGallery(
 /// 共有PNG(シール/シール帳)のバイト列を取り込む。
 /// ギャラリー取り込みとBLE受信で共用。戻り値: 結果メッセージ(無効ならnull)
 Future<String?> importSharedPngBytes(WidgetRef ref, Uint8List bytes) async {
+  // BLEその場交換の「まとめ袋」(JSON)判定
+  if (bytes.isNotEmpty && bytes.first == 0x7b) {
+    final message = await _importBundle(ref, bytes);
+    if (message != null) return message;
+  }
   final meta = StickerShare.extract(bytes);
   if (meta == null ||
       (meta['kind'] != 'culturetune_sticker' &&
@@ -369,6 +404,14 @@ Future<String?> importSharedPngBytes(WidgetRef ref, Uint8List bytes) async {
       flatPng: bytes,
       creatorName: creatorName,
       creatorColor: creatorColor,
+    );
+    final pageTitle = (meta['title'] as String?)?.trim() ?? '';
+    await recordExchange(
+      ref,
+      direction: BeamDirection.received,
+      peerName: creatorName,
+      peerColor: creatorColor,
+      label: pageTitle.isEmpty ? 'シール帳' : 'シール帳「$pageTitle」',
     );
     return restored
         ? '$creatorName のシール帳を追加したよ。追いデコして送り返すと交換日記になるよ'
@@ -401,7 +444,72 @@ Future<String?> importSharedPngBytes(WidgetRef ref, Uint8List bytes) async {
         rawIsCutout: meta['rawIsCutout'] as bool? ?? false,
         borderColorHex: meta['borderColor'] as String?,
       );
+  await recordExchange(
+    ref,
+    direction: BeamDirection.received,
+    peerName: creatorName,
+    peerColor: creatorColor,
+    label: 'シール',
+  );
   return '$creatorName のシールをパレットに追加したよ';
+}
+
+/// 複数シールのまとめ袋を取り込む。バンドルでなければnull
+Future<String?> _importBundle(WidgetRef ref, Uint8List bytes) async {
+  Map<String, dynamic> json;
+  try {
+    json = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+  } catch (_) {
+    return null;
+  }
+  if (json['kind'] != 'culturetune_bundle') return null;
+  final entries = (json['stickers'] as List? ?? const [])
+      .whereType<Map<String, dynamic>>()
+      .toList();
+  if (entries.isEmpty) return null;
+
+  final repo = ref.read(stickerRepositoryProvider);
+  var count = 0;
+  String creatorName = 'ともだち';
+  String? creatorColor;
+  for (final meta in entries) {
+    final png = meta['png'] as String?;
+    if (png == null) continue;
+    creatorName = meta['creatorName'] as String? ?? creatorName;
+    creatorColor = meta['creatorColor'] as String? ?? creatorColor;
+    final linkedItemId = await _restoreLink(
+      ref,
+      meta['link'],
+      creatorName: creatorName,
+      creatorColor: creatorColor,
+    );
+    final audioB64 = meta['audio'] as String?;
+    final rawB64 = meta['raw'] as String?;
+    await repo.importProcessed(
+      pngBytes: base64Decode(png),
+      texture:
+          StickerTexture.values.asNameMap()[meta['texture']] ??
+          StickerTexture.normal,
+      creatorName: creatorName,
+      creatorColor: creatorColor,
+      linkedItemId: linkedItemId,
+      source: CardSource.beam,
+      audioBytes: audioB64 != null ? base64Decode(audioB64) : null,
+      rawBytes: rawB64 != null ? base64Decode(rawB64) : null,
+      rawIsCutout: meta['rawIsCutout'] as bool? ?? false,
+      borderColorHex: meta['borderColor'] as String?,
+    );
+    count++;
+  }
+  if (count == 0) return null;
+  await recordExchange(
+    ref,
+    direction: BeamDirection.received,
+    peerName: creatorName,
+    peerColor: creatorColor,
+    label: count == 1 ? 'シール' : 'シール×$count',
+  );
+  return '$creatorName のシールを$count枚うけとったよ';
 }
 
 /// 埋め込みカルチャーをカードとして復元し、idを返す
