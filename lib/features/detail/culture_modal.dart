@@ -57,9 +57,9 @@ Future<void> openCultureItem(
     // 下スワイプで閉じられ、中身が多いときはシート内でスクロール
     builder: (sheetContext) => DraggableScrollableSheet(
       expand: false,
-      initialChildSize: 0.62,
+      initialChildSize: item.category == CultureCategory.book ? 0.74 : 0.62,
       minChildSize: 0.35,
-      maxChildSize: 0.85,
+      maxChildSize: 0.9,
       builder: (context, scrollController) => SingleChildScrollView(
         controller: scrollController,
         child: _CultureSheet(item: item),
@@ -416,7 +416,33 @@ class _CultureSheetState extends ConsumerState<_CultureSheet> {
       );
     }
 
-    // 本・その他: サムネ + 外部リンク
+    // 本: 縦長の表紙を主役にしたレイアウト
+    if (item.category == CultureCategory.book) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              height: 330,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(CTRadius.card),
+                boxShadow: ctCardShadow,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(CTRadius.card),
+                child: AspectRatio(
+                  aspectRatio: 0.7,
+                  child: ThumbImage(item: item),
+                ),
+              ),
+            ),
+          ),
+          if (item.url != null) ...[const SizedBox(height: 12), _openButton()],
+        ],
+      );
+    }
+
+    // その他: サムネ + 外部リンク
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
