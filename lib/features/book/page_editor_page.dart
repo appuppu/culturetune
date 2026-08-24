@@ -57,6 +57,23 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
   double _startScale = 1;
   double _startRotation = 0;
 
+  // ドラッグ中のゴミ箱(要素をここへ運んで離すとはがれる)
+  bool _dragging = false;
+  bool _overTrash = false;
+
+  // キャンバス全体ピンチ(選択要素の拡大縮小の救済用)
+  bool _canvasPinch = false;
+
+  /// ゴミ箱の相対位置(キャンバス下中央)と判定
+  static const _trashX = 0.5;
+  static const _trashY = 0.9;
+
+  bool _isOverTrash(double x, double y, double w, double h) {
+    final dx = (x - _trashX) * w;
+    final dy = (y - _trashY) * h;
+    return dx * dx + dy * dy < 48 * 48;
+  }
+
   AppDatabase get _db => ref.read(databaseProvider);
 
   @override
@@ -361,6 +378,10 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
   Future<void> _removeSelected() async {
     final r = _selected;
     if (r == null) return;
+    await _removeElement(r);
+  }
+
+  Future<void> _removeElement(ResolvedElement r) async {
     HapticFeedback.heavyImpact(); // ペリッ
     setState(() {
       _elements.removeWhere((e) => e.element.id == r.element.id);
@@ -494,10 +515,8 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                           ),
                       itemCount: presets.length,
                       itemBuilder: (_, i) => GestureDetector(
-                        onTap: () => Navigator.pop(
-                          sheetContext,
-                          'asset:${presets[i]}',
-                        ),
+                        onTap: () =>
+                            Navigator.pop(sheetContext, 'asset:${presets[i]}'),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Image.asset(presets[i], fit: BoxFit.cover),
@@ -705,6 +724,38 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                         final h = constraints.maxHeight;
                         return GestureDetector(
                           onTap: () => setState(() => _selectedId = null),
+                          // 小さくしすぎた要素の救済: 選択中なら
+                          // キャンバスのどこでも2本指ピンチで拡大・回転できる
+                          onScaleStart: (_) => _canvasPinch = false,
+                          onScaleUpdate: (details) {
+                            final r = _selected;
+                            if (r == null ||
+                                !_editing ||
+                                details.pointerCount < 2) {
+                              return;
+                            }
+                            if (!_canvasPinch) {
+                              _canvasPinch = true;
+                              _startScale = r.element.scale / details.scale;
+                              _startRotation =
+                                  r.element.rotation - details.rotation;
+                            }
+                            setState(() {
+                              r.element = r.element.copyWith(
+                                scale: (_startScale * details.scale).clamp(
+                                  0.25,
+                                  4.0,
+                                ),
+                                rotation: _startRotation + details.rotation,
+                              );
+                            });
+                          },
+                          onScaleEnd: (_) {
+                            if (!_canvasPinch) return;
+                            _canvasPinch = false;
+                            final r = _selected;
+                            if (r != null) _persistElement(r);
+                          },
                           child: Container(
                             decoration: BoxDecoration(
                               color: _bgColor,
@@ -728,6 +779,41 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                                   ),
                                 for (final r in _elements)
                                   _buildElement(r, w, h),
+                                // ドラッグ中だけ出るゴミ箱(ここで離すとはがれる)
+                                if (_editing && _dragging)
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    top: h * _trashY - 28,
+                                    child: Center(
+                                      child: AnimatedContainer(
+                                        duration: const Duration(
+                                          milliseconds: 120,
+                                        ),
+                                        width: _overTrash ? 64 : 52,
+                                        height: _overTrash ? 64 : 52,
+                                        decoration: BoxDecoration(
+                                          color: _overTrash
+                                              ? Colors.redAccent
+                                              : Colors.black.withValues(
+                                                  alpha: 0.45,
+                                                ),
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white.withValues(
+                                              alpha: 0.9,
+                                            ),
+                                            width: 2,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.delete_rounded,
+                                          color: Colors.white,
+                                          size: _overTrash ? 30 : 24,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -836,7 +922,11 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                 // ダブルタップ: カード/リンク付きシールは詳細へ
                 onDoubleTap: () => _onDoubleTap(r),
                 onScaleStart: (details) {
-                  setState(() => _selectedId = el.id);
+                  setState(() {
+                    _selectedId = el.id;
+                    _dragging = true;
+                    _overTrash = false;
+                  });
                   _startScale = el.scale;
                   _startRotation = el.rotation;
                 },
@@ -854,9 +944,25 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                       scale: (_startScale * details.scale).clamp(0.25, 4.0),
                       rotation: _startRotation + details.rotation,
                     );
+                    final over = _isOverTrash(r.element.x, r.element.y, w, h);
+                    if (over != _overTrash) {
+                      _overTrash = over;
+                      if (over) HapticFeedback.selectionClick();
+                    }
                   });
                 },
-                onScaleEnd: (_) => _persistElement(r),
+                onScaleEnd: (_) async {
+                  final trash = _overTrash;
+                  setState(() {
+                    _dragging = false;
+                    _overTrash = false;
+                  });
+                  if (trash) {
+                    await _removeElement(r);
+                  } else {
+                    await _persistElement(r);
+                  }
+                },
                 child: Transform.rotate(
                   angle: el.rotation,
                   child: Container(

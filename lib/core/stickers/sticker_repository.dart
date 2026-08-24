@@ -75,6 +75,7 @@ class StickerRepository {
     CardSource source = CardSource.beam,
     Uint8List? audioBytes,
     String? rawSourcePath,
+    Uint8List? rawBytes,
     bool rawIsCutout = false,
     String? borderColorHex,
   }) {
@@ -87,6 +88,7 @@ class StickerRepository {
       source: source,
       audioBytes: audioBytes,
       rawSourcePath: rawSourcePath,
+      rawBytes: rawBytes,
       rawIsCutout: rawIsCutout,
       borderColorHex: borderColorHex,
     );
@@ -101,6 +103,7 @@ class StickerRepository {
     required CardSource source,
     Uint8List? audioBytes,
     String? rawSourcePath,
+    Uint8List? rawBytes,
     bool rawIsCutout = false,
     String? borderColorHex,
   }) async {
@@ -113,9 +116,13 @@ class StickerRepository {
       audioPath = 'stickers/$id.m4a';
     }
     // フチ色を後から変えられるよう、加工前の素材を保存しておく
+    // (交換で受け取ったシールはメタデータ内のバイト列から復元)
     String? rawPath;
     if (rawSourcePath != null && File(rawSourcePath).existsSync()) {
       await File(rawSourcePath).copy('${dir.path}/${id}_raw.png');
+      rawPath = 'stickers/${id}_raw.png';
+    } else if (rawBytes != null && rawBytes.isNotEmpty) {
+      await File('${dir.path}/${id}_raw.png').writeAsBytes(rawBytes);
       rawPath = 'stickers/${id}_raw.png';
     }
     await _db.insertSticker(

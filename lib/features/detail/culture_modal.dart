@@ -343,10 +343,14 @@ class _CultureSheetState extends ConsumerState<_CultureSheet> {
           item.url ?? 'https://www.youtube.com/watch?v=${_videoIdOf(item)}',
         );
       }
+      // AspectRatioで高さを固定しないと、シートが画面全体まで伸びてしまう
       return ClipRRect(
         clipBehavior: Clip.antiAliasWithSaveLayer,
         borderRadius: BorderRadius.circular(CTRadius.card),
-        child: YoutubePlayer(controller: _yt!, aspectRatio: 16 / 9),
+        child: AspectRatio(
+          aspectRatio: 16 / 9,
+          child: YoutubePlayer(controller: _yt!, aspectRatio: 16 / 9),
+        ),
       );
     }
 

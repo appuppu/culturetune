@@ -54,6 +54,15 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
     }
   }
 
+  // 加工前素材も同梱: 受け取った側でもフチ色を変えられるようにする
+  String? rawB64;
+  if (sticker.rawPath != null) {
+    final rawFile = File(repo.resolve(sticker.rawPath!));
+    if (rawFile.existsSync()) {
+      rawB64 = base64Encode(await rawFile.readAsBytes());
+    }
+  }
+
   final meta = {
     'v': 2,
     'kind': 'culturetune_sticker',
@@ -63,6 +72,9 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
     'createdAt': sticker.createdAt.toIso8601String(),
     if (link != null) 'link': link,
     if (audioB64 != null) 'audio': audioB64,
+    if (rawB64 != null) 'raw': rawB64,
+    if (rawB64 != null) 'rawIsCutout': sticker.rawIsCutout,
+    if (sticker.borderColor != null) 'borderColor': sticker.borderColor,
   };
 
   final embedded = StickerShare.embed(bytes, meta);
@@ -157,6 +169,20 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
             }
           }
         }
+        // 加工前素材(容量が許す範囲で。受け取り側のフチ色変更用)
+        String? rawB64;
+        if (sticker.rawPath != null) {
+          final rawFile = File(stickerRepo.resolve(sticker.rawPath!));
+          if (rawFile.existsSync()) {
+            final rawBytes = await rawFile.readAsBytes();
+            embeddedBytes += rawBytes.length;
+            if (embeddedBytes <= _maxEmbedBytes) {
+              rawB64 = base64Encode(rawBytes);
+            } else {
+              embeddedBytes -= rawBytes.length;
+            }
+          }
+        }
         data['sticker'] = {
           'texture': sticker.texture.name,
           'creatorName': sticker.creatorName,
@@ -165,6 +191,9 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
           if (link != null) 'link': link,
           'png': base64Encode(png),
           if (audioB64 != null) 'audio': audioB64,
+          if (rawB64 != null) 'raw': rawB64,
+          if (rawB64 != null) 'rawIsCutout': sticker.rawIsCutout,
+          if (sticker.borderColor != null) 'borderColor': sticker.borderColor,
         };
     }
     if (overflow) break;
@@ -260,6 +289,7 @@ Future<void> importStickerFromGallery(
     creatorColor: creatorColor,
   );
   final audioB64 = meta['audio'] as String?;
+  final rawB64 = meta['raw'] as String?;
   await ref
       .read(stickerRepositoryProvider)
       .importProcessed(
@@ -270,6 +300,9 @@ Future<void> importStickerFromGallery(
         linkedItemId: linkedItemId,
         source: CardSource.beam,
         audioBytes: audioB64 != null ? base64Decode(audioB64) : null,
+        rawBytes: rawB64 != null ? base64Decode(rawB64) : null,
+        rawIsCutout: meta['rawIsCutout'] as bool? ?? false,
+        borderColorHex: meta['borderColor'] as String?,
       );
 
   if (!context.mounted) return;
@@ -429,6 +462,7 @@ Future<bool> _importPage(
                 stickerMeta['creatorColor'] as String? ?? creatorColor,
           );
           final elementAudio = stickerMeta['audio'] as String?;
+          final elementRaw = stickerMeta['raw'] as String?;
           refId = await stickerRepo.importProcessed(
             pngBytes: base64Decode(png),
             texture:
@@ -442,6 +476,9 @@ Future<bool> _importPage(
             audioBytes: elementAudio != null
                 ? base64Decode(elementAudio)
                 : null,
+            rawBytes: elementRaw != null ? base64Decode(elementRaw) : null,
+            rawIsCutout: stickerMeta['rawIsCutout'] as bool? ?? false,
+            borderColorHex: stickerMeta['borderColor'] as String?,
           );
           importedStickers[png] = refId;
         }
