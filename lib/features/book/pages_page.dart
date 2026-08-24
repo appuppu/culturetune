@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../app/providers.dart';
 import '../../core/files/doc_paths.dart';
+import '../../core/widgets/use_case_card.dart';
 import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/stickers/page_renderer.dart';
@@ -242,19 +243,19 @@ class _EmptyBook extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            const _UseCaseCard(
+            const UseCaseCard(
               icon: Icons.favorite_rounded,
               colorIndex: 0,
               title: '推し活ログ',
               body: '新曲やMV、出演作をカードにして集めよう。シール帳に貼ればタップでその場で再生できるよ',
             ),
-            const _UseCaseCard(
+            const UseCaseCard(
               icon: Icons.flight_takeoff_rounded,
               colorIndex: 5,
               title: '旅行のきろく',
               body: '旅の写真をまとめてシール化。ごはんの店カードはタップで地図がひらくよ',
             ),
-            const _UseCaseCard(
+            const UseCaseCard(
               icon: Icons.swap_horiz_rounded,
               colorIndex: 1,
               title: '交換日記・寄せ書き',
@@ -271,74 +272,6 @@ class _EmptyBook extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-/// 空のシール帳タブに出す使いかた例カード
-class _UseCaseCard extends StatelessWidget {
-  const _UseCaseCard({
-    required this.icon,
-    required this.colorIndex,
-    required this.title,
-    required this.body,
-  });
-
-  final IconData icon;
-  final int colorIndex;
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        CTColors.moodPalette[colorIndex % CTColors.moodPalette.length];
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: CTColors.surface,
-        borderRadius: BorderRadius.circular(CTRadius.card),
-        boxShadow: ctCardShadow,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.18),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 20, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13.5,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  body,
-                  style: TextStyle(
-                    fontSize: 11.5,
-                    height: 1.5,
-                    color: CTColors.textSub,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

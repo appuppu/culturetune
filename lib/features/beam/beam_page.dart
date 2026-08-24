@@ -15,6 +15,7 @@ import '../../core/beam/ble_transfer.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
+import '../../core/widgets/use_case_card.dart';
 import '../palette/sticker_exchange.dart';
 import 'beam_profile_provider.dart';
 import 'exchange_history.dart';
@@ -620,10 +621,48 @@ class _PeerFieldState extends State<_PeerField> {
   Widget build(BuildContext context) {
     if (!radarOn) {
       return Center(
-        child: Icon(
-          Icons.radar_rounded,
-          size: 56,
-          color: CTColors.textSub.withValues(alpha: 0.4),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Icon(
+                Icons.radar_rounded,
+                size: 48,
+                color: CTColors.textSub.withValues(alpha: 0.5),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                '近くのともだちと その場で交換',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: CTColors.textMain,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const UseCaseCard(
+                icon: Icons.wifi_tethering_rounded,
+                colorIndex: 0,
+                title: 'ふたりともレーダーをオン',
+                body: '上のスイッチをオンにすると、近くでアプリを開いているともだちがふわふわ浮かんでくるよ',
+              ),
+              const UseCaseCard(
+                icon: Icons.touch_app_rounded,
+                colorIndex: 1,
+                title: 'ともだちをタップしてえらぶ',
+                body: '浮かんできたともだちをタップして、わたすシール(まとめてOK)やシール帳をえらぶよ',
+              ),
+              const UseCaseCard(
+                icon: Icons.pin_rounded,
+                colorIndex: 3,
+                title: '4けたのコードで交換完了',
+                body: '画面に出るコードを口で伝えて、あいてが入力したら転送スタート。音楽や地図もそのまま届くよ',
+              ),
+            ],
+          ),
         ),
       );
     }

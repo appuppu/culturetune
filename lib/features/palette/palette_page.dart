@@ -14,6 +14,7 @@ import '../../core/stickers/voice_player.dart';
 import '../../core/widgets/border_color_sheet.dart';
 import '../../core/widgets/culture_picker_sheet.dart';
 import '../../core/widgets/selection_action_bar.dart';
+import '../../core/widgets/use_case_card.dart';
 import 'sticker_exchange.dart';
 
 /// シールの選択モード。null=通常、Set=選択中のシールid
@@ -82,31 +83,58 @@ class PaletteBody extends ConsumerWidget {
     return stickers.when(
       data: (list) => list.isEmpty
           ? Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.auto_fix_high_rounded,
-                    size: 56,
-                    color: CTColors.primary,
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    '写真を選ぶだけで\n切り抜きシールがつくれるよ',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: CTColors.textSub, height: 1.6),
-                  ),
-                  const SizedBox(height: 12),
-                  FilledButton.icon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const CreateStickerPage(),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.auto_fix_high_rounded,
+                      size: 48,
+                      color: CTColors.primary,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      '写真がそのままシールになるよ',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: CTColors.textMain,
                       ),
                     ),
-                    icon: const Icon(Icons.add_rounded, size: 18),
-                    label: const Text('写真からシールをつくる'),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    const UseCaseCard(
+                      icon: Icons.content_cut_rounded,
+                      colorIndex: 0,
+                      title: '自動切り抜き',
+                      body: '写真を選ぶだけで被写体を切り抜いてシール化。質感やフチの色も選べるよ。まとめて作るのもOK',
+                    ),
+                    const UseCaseCard(
+                      icon: Icons.volume_up_rounded,
+                      colorIndex: 1,
+                      title: 'ボイス&カード埋め込み',
+                      body: '声を録音したり、曲や店のカードを埋め込むと「タップすると鳴るシール」になるよ',
+                    ),
+                    const UseCaseCard(
+                      icon: Icons.sticky_note_2_rounded,
+                      colorIndex: 3,
+                      title: 'メッセージシール',
+                      body: 'ひとことをメモ紙風のシールに。寄せ書きや交換日記にぴったり',
+                    ),
+                    const SizedBox(height: 8),
+                    FilledButton.icon(
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => const CreateStickerPage(),
+                        ),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('写真からシールをつくる'),
+                    ),
+                  ],
+                ),
               ),
             )
           : Stack(

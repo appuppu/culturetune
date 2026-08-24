@@ -12,6 +12,7 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
 import '../../core/widgets/selection_action_bar.dart';
 import '../../core/widgets/thumb_image.dart';
+import '../../core/widgets/use_case_card.dart';
 import '../detail/culture_modal.dart';
 import '../map/food_map_page.dart';
 import '../mix/mix_controller.dart';
@@ -322,23 +323,50 @@ class _EmptyVault extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.style_rounded, size: 56, color: CTColors.primary),
-          const SizedBox(height: 12),
-          Text(
-            '本・音楽・動画・ご飯を登録すると\nタップで再生できるカードになるよ',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: CTColors.textSub, height: 1.6),
-          ),
-          const SizedBox(height: 12),
-          FilledButton.icon(
-            onPressed: () => showPostCategorySheet(context),
-            icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('カードをつくる'),
-          ),
-        ],
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(28, 24, 28, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Icon(Icons.style_rounded, size: 48, color: CTColors.primary),
+            const SizedBox(height: 10),
+            Text(
+              '好きなものをカードにして集めよう',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: CTColors.textMain,
+              ),
+            ),
+            const SizedBox(height: 16),
+            const UseCaseCard(
+              icon: Icons.link_rounded,
+              colorIndex: 0,
+              title: '音楽・動画はURLを貼るだけ',
+              body: 'YouTubeやSpotifyのリンクを貼ると、タイトルとジャケット付きのカードに。タップでその場で再生できるよ',
+            ),
+            const UseCaseCard(
+              icon: Icons.qr_code_scanner_rounded,
+              colorIndex: 1,
+              title: '本はバーコードでスキャン',
+              body: '裏表紙のバーコードを読むだけで表紙つきのカードに。ご飯は写真と店の場所で登録できるよ',
+            ),
+            const UseCaseCard(
+              icon: Icons.menu_book_rounded,
+              colorIndex: 5,
+              title: 'シール帳に貼って遊ぶ',
+              body: 'カードはシール帳に貼れて、タップで再生や地図がひらく。シールに埋め込むこともできるよ',
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: () => showPostCategorySheet(context),
+              icon: const Icon(Icons.add_rounded, size: 18),
+              label: const Text('カードをつくる'),
+            ),
+          ],
+        ),
       ),
     );
   }
