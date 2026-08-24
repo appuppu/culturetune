@@ -351,7 +351,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
     final result = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('ページタイトル'),
+        title: const Text('シール帳のタイトル'),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -682,7 +682,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                   ],
                 ),
               )
-            : Text(_title.isEmpty ? 'ページ' : _title),
+            : Text(_title.isEmpty ? 'シール帳' : _title),
         actions: [
           if (_editing)
             IconButton(

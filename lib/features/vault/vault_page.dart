@@ -97,7 +97,7 @@ class _VaultBody extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('${targets.length}枚のカードを削除する?'),
-        content: const Text('シールの埋め込みやページに貼った分も外れるよ'),
+        content: const Text('シールの埋め込みやシール帳に貼った分も外れるよ'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),

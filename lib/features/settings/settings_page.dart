@@ -92,7 +92,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                   subtitle: const Text(
-                    '全ページ・シール・カード・ボイスを1つのファイルに。iCloudやGoogleドライブに保存してね',
+                    '全シール帳・シール・カード・ボイスを1つのファイルに。iCloudやGoogleドライブに保存してね',
                     style: TextStyle(fontSize: 11),
                   ),
                   onTap: () => _runBackup(() => exportBookBackup(ref)),

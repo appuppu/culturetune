@@ -229,7 +229,7 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
   await file.writeAsBytes(embedded);
   await Share.shareXFiles([
     XFile(file.path),
-  ], text: 'シール帳のページをあげる! しーるちょーの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
+  ], text: 'シール帳をあげる! しーるちょーの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
 }
 
 /// ギャラリーの画像からシール/ページを取り込む(共有シートで受け取ったPNG)。
@@ -270,8 +270,8 @@ Future<void> importStickerFromGallery(
       SnackBar(
         content: Text(
           restored
-              ? '$creatorName のページをシール帳に追加したよ。追いデコして送り返すと交換日記になるよ'
-              : '$creatorName のページを画像として追加したよ',
+              ? '$creatorName のシール帳を追加したよ。追いデコして送り返すと交換日記になるよ'
+              : '$creatorName のシール帳を画像として追加したよ',
         ),
       ),
     );
@@ -361,7 +361,7 @@ Future<bool> _importPage(
 
   final rawTitle = (meta['title'] as String?)?.trim();
   final title = (rawTitle == null || rawTitle.isEmpty)
-      ? '$creatorNameのページ'
+      ? '$creatorNameのシール帳'
       : '$rawTitle (from $creatorName)';
 
   final elementsMeta = meta['elements'];

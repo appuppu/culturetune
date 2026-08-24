@@ -41,7 +41,7 @@ class PagesPage extends ConsumerWidget {
               children: [
                 _FloatingAction(
                   icon: Icons.grid_view_rounded,
-                  tooltip: 'ページ一覧',
+                  tooltip: 'シール帳一覧',
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const PagesGridPage()),
                   ),
@@ -50,7 +50,7 @@ class PagesPage extends ConsumerWidget {
                 _FloatingAction(
                   icon: Icons.add_rounded,
                   color: CTColors.primary,
-                  tooltip: '新しいページ',
+                  tooltip: '新しいシール帳',
                   onTap: () => createNewPage(context, ref),
                 ),
               ],
@@ -118,7 +118,7 @@ class _EmptyBook extends StatelessWidget {
           FilledButton.icon(
             onPressed: onCreate,
             icon: const Icon(Icons.add_rounded, size: 18),
-            label: const Text('最初のページをつくる'),
+            label: const Text('最初のシール帳をつくる'),
           ),
         ],
       ),
@@ -151,10 +151,10 @@ class _PagePagerState extends ConsumerState<_PagePager> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('このページを削除する?'),
+        title: const Text('このシール帳を削除する?'),
         content: Text(
           page.title.isEmpty
-              ? '${page.updatedAt.month}/${page.updatedAt.day}のページ'
+              ? '${page.updatedAt.month}/${page.updatedAt.day}のシール帳'
               : page.title,
         ),
         actions: [
@@ -455,11 +455,11 @@ class PagesGridPage extends ConsumerWidget {
     final pages = ref.watch(stickerPagesProvider).valueOrNull ?? [];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ページ一覧')),
+      appBar: AppBar(title: const Text('シール帳一覧')),
       body: pages.isEmpty
           ? Center(
               child: Text(
-                'まだページがないよ',
+                'まだシール帳がないよ',
                 style: TextStyle(color: CTColors.textSub),
               ),
             )
@@ -504,7 +504,7 @@ class PagesGridPage extends ConsumerWidget {
                               final ok = await showDialog<bool>(
                                 context: context,
                                 builder: (dialogContext) => AlertDialog(
-                                  title: const Text('このページを削除する?'),
+                                  title: const Text('このシール帳を削除する?'),
                                   actions: [
                                     TextButton(
                                       onPressed: () =>

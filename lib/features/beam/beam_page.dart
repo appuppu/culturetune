@@ -136,7 +136,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     if (pages.isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('まずシール帳でページをつくってね')));
+      ).showSnackBar(const SnackBar(content: Text('まずシール帳をつくってね')));
       return;
     }
     final selected = await showModalBottomSheet<StickerPage>(
@@ -158,7 +158,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                 leading: const Icon(Icons.menu_book_rounded),
                 title: Text(
                   page.title.isEmpty
-                      ? '${page.updatedAt.month}/${page.updatedAt.day}のページ'
+                      ? '${page.updatedAt.month}/${page.updatedAt.day}のシール帳'
                       : page.title,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
@@ -172,7 +172,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     if (selected == null || !mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('ページを画像にしてるよ…')));
+    ).showSnackBar(const SnackBar(content: Text('シール帳を画像にしてるよ…')));
     await sharePageWithMeta(ref, selected);
   }
 

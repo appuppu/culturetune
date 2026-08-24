@@ -35,7 +35,7 @@ class PaletteBody extends ConsumerWidget {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('${targets.length}個のシールを削除する?'),
-        content: const Text('ページに貼ってある分もはがれるよ'),
+        content: const Text('シール帳に貼ってある分もはがれるよ'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),

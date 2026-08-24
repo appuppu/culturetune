@@ -55,7 +55,7 @@ Future<void> maybeShowOnboarding(BuildContext context) async {
             const _Step(
               icon: Icons.swap_horiz_rounded,
               title: '友達と交換できる',
-              body: 'シールやページをLINEで送れる。あげても自分のは減らない',
+              body: 'シールやシール帳をLINEで送れる。あげても自分のは減らない',
             ),
             const SizedBox(height: 16),
             FilledButton(

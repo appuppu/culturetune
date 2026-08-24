@@ -415,5 +415,5 @@ Future<String> importBookBackup(WidgetRef ref) async {
         );
   }
 
-  return 'ページ$pageCount・シール$stickerCount・カード$itemCount枚を復元したよ';
+  return 'シール帳$pageCount・シール$stickerCount・カード$itemCount枚を復元したよ';
 }
