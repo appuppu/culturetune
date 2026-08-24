@@ -140,8 +140,14 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
   ], text: 'シール帳をあげる! しーるちょーの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
 }
 
-/// シール帳のメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)
-Future<Uint8List> buildPageSharePng(WidgetRef ref, StickerPage page) async {
+/// シール帳のメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)。
+/// flatWidth: 表向き画像の幅。BLE転送は復元が要素データから行われるため
+/// 小さくして転送量を削る(見た目の品質には影響しない)
+Future<Uint8List> buildPageSharePng(
+  WidgetRef ref,
+  StickerPage page, {
+  int flatWidth = 1080,
+}) async {
   final db = ref.read(databaseProvider);
   final stickerRepo = ref.read(stickerRepositoryProvider);
   final profile = await ref.read(beamProfileProvider.future);
@@ -153,6 +159,7 @@ Future<Uint8List> buildPageSharePng(WidgetRef ref, StickerPage page) async {
     stickerRepo: stickerRepo,
     itemRepo: ref.read(itemRepositoryProvider),
     page: page,
+    width: flatWidth,
   );
 
   // 要素データを収集(サイズ超過時は埋め込みを諦めて平坦画像のみ)

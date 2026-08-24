@@ -103,21 +103,25 @@ abstract final class BleTransfer {
       final chunkSize = (mtu - 3).clamp(20, 512);
       final dataChar = charOf(inboxDataGuid);
       var sent = 0;
-      var chunkIndex = 0;
+      // 8チャンクを応答なしでまとめて発射し、最後の1本だけ応答ありで
+      // フラッシュする(1本ずつawaitするとチャネル往復で遅くなる)
+      const burst = 8;
       while (sent < data.length) {
         if (cancelled.value) return SendResult.cancelled;
-        final end = (sent + chunkSize).clamp(0, data.length);
-        // 流量制御: 一定間隔で応答ありで書いて詰まりを防ぐ
-        final flush = chunkIndex % 24 == 23 || end == data.length;
-        await dataChar.write(data.sublist(sent, end), withoutResponse: !flush);
-        sent = end;
-        chunkIndex++;
-        if (chunkIndex % 12 == 0 || sent == data.length) {
-          onProgress(
-            sent / data.length,
-            'わたし中… ${(sent / 1024).round()}KB / ${(data.length / 1024).round()}KB',
+        final writes = <Future<void>>[];
+        for (var i = 0; i < burst && sent < data.length; i++) {
+          final end = (sent + chunkSize).clamp(0, data.length);
+          final last = end == data.length || i == burst - 1;
+          writes.add(
+            dataChar.write(data.sublist(sent, end), withoutResponse: !last),
           );
+          sent = end;
         }
+        await Future.wait(writes);
+        onProgress(
+          sent / data.length,
+          'わたし中… ${(sent / 1024).round()}KB / ${(data.length / 1024).round()}KB',
+        );
       }
       onProgress(1, 'とどけたよ!');
       return SendResult.sent;

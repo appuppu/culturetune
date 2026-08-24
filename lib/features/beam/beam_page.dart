@@ -223,7 +223,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     } else {
       final page = await pickPageForSend(context, ref);
       if (page == null || !mounted) return;
-      bytes = await buildPageSharePng(ref, page);
+      bytes = await buildPageSharePng(ref, page, flatWidth: 540);
       label = page.title.isEmpty ? 'シール帳' : 'シール帳「${page.title}」';
     }
     if (!mounted) return;
