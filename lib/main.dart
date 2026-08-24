@@ -78,15 +78,16 @@ class _HomeShellState extends ConsumerState<HomeShell> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Column(
+      // プレイヤーはコンテンツを縮めず、上に浮かせて表示する
+      body: Stack(
         children: [
-          Expanded(
+          Positioned.fill(
             child: IndexedStack(
               index: _index,
               children: const [PagesPage(), StudioPage(), BeamPage()],
             ),
           ),
-          const MiniPlayer(),
+          const Align(alignment: Alignment.bottomCenter, child: MiniPlayer()),
         ],
       ),
       bottomNavigationBar: NavigationBar(

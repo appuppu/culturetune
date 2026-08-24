@@ -10,12 +10,16 @@ import '../../core/db/app_database.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
+import '../../core/widgets/selection_action_bar.dart';
 import '../../core/widgets/thumb_image.dart';
 import '../detail/culture_modal.dart';
 import '../map/food_map_page.dart';
 import '../mix/mix_controller.dart';
 import '../post/post_flow.dart';
 import '../settings/settings_page.dart';
+
+/// カードの選択モード。null=通常、Set=選択中のカードid
+final cardSelectionProvider = StateProvider<Set<String>?>((ref) => null);
 
 class VaultPage extends ConsumerWidget {
   const VaultPage({super.key, this.embedded = false});
@@ -85,72 +89,130 @@ class _VaultBody extends ConsumerWidget {
 
   final List<CultureItem> items;
 
+  Future<void> _deleteSelected(BuildContext context, WidgetRef ref) async {
+    final selected = ref.read(cardSelectionProvider) ?? const <String>{};
+    final targets = items.where((i) => selected.contains(i.id)).toList();
+    if (targets.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${targets.length}枚のカードを削除する?'),
+        content: const Text('シールの埋め込みやページに貼った分も外れるよ'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('やめる'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final repo = ref.read(itemRepositoryProvider);
+    for (final item in targets) {
+      await repo.deleteItem(item);
+    }
+    ref.read(cardSelectionProvider.notifier).state = null;
+    if (context.mounted) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${targets.length}枚のカードを削除したよ')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final pinned = items.where((i) => i.pinnedOrder != null).toList();
     final rest = items.where((i) => i.pinnedOrder == null).toList();
+    final selection = ref.watch(cardSelectionProvider);
 
-    return CustomScrollView(
-      slivers: [
-        if (pinned.isNotEmpty) ...[
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.push_pin_rounded,
-                    size: 13,
-                    color: CTColors.textSub,
+    return Stack(
+      children: [
+        CustomScrollView(
+          slivers: [
+            if (pinned.isNotEmpty) ...[
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.push_pin_rounded,
+                        size: 13,
+                        color: CTColors.textSub,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'ピン留め(長押しで並べ替え)',
+                        style: TextStyle(fontSize: 11, color: CTColors.textSub),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ピン留め(長押しで並べ替え)',
-                    style: TextStyle(fontSize: 11, color: CTColors.textSub),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 152,
-              child: ReorderableListView.builder(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
-                itemCount: pinned.length,
-                proxyDecorator: (child, _, _) =>
-                    Transform.scale(scale: 1.06, child: child),
-                onReorderItem: (oldIndex, newIndex) {
-                  final reordered = [...pinned];
-                  final moved = reordered.removeAt(oldIndex);
-                  reordered.insert(newIndex, moved);
-                  ref.read(itemRepositoryProvider).reorderPinned(reordered);
-                  HapticFeedback.lightImpact();
-                },
-                itemBuilder: (_, i) => Container(
-                  key: ValueKey(pinned[i].id),
-                  width: 84,
-                  margin: const EdgeInsets.symmetric(horizontal: 3),
-                  alignment: Alignment.topCenter,
-                  child: CultureCard(item: pinned[i]),
                 ),
               ),
+              SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 152,
+                  child: ReorderableListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.fromLTRB(10, 6, 10, 4),
+                    itemCount: pinned.length,
+                    proxyDecorator: (child, _, _) =>
+                        Transform.scale(scale: 1.06, child: child),
+                    onReorderItem: (oldIndex, newIndex) {
+                      final reordered = [...pinned];
+                      final moved = reordered.removeAt(oldIndex);
+                      reordered.insert(newIndex, moved);
+                      ref.read(itemRepositoryProvider).reorderPinned(reordered);
+                      HapticFeedback.lightImpact();
+                    },
+                    itemBuilder: (_, i) => Container(
+                      key: ValueKey(pinned[i].id),
+                      width: 84,
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      alignment: Alignment.topCenter,
+                      child: CultureCard(item: pinned[i]),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+            SliverPadding(
+              padding: EdgeInsets.fromLTRB(
+                10,
+                6,
+                10,
+                selection != null ? 76 : 12,
+              ),
+              // コンテンツの形(本=縦長/動画=横長/音楽・ご飯=正方形)に合わせて
+              // 高さが変わるためメーソンリー配置にする
+              sliver: SliverMasonryGrid.count(
+                crossAxisCount: 3,
+                mainAxisSpacing: 8,
+                crossAxisSpacing: 8,
+                childCount: rest.length,
+                itemBuilder: (_, i) => CultureCard(item: rest[i]),
+              ),
+            ),
+          ],
+        ),
+        if (selection != null)
+          Positioned(
+            left: 16,
+            right: 16,
+            bottom: 12,
+            child: SelectionActionBar(
+              count: selection.length,
+              onDelete: () => _deleteSelected(context, ref),
+              onClose: () =>
+                  ref.read(cardSelectionProvider.notifier).state = null,
             ),
           ),
-        ],
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(10, 6, 10, 12),
-          // コンテンツの形(本=縦長/動画=横長/音楽・ご飯=正方形)に合わせて
-          // 高さが変わるためメーソンリー配置にする
-          sliver: SliverMasonryGrid.count(
-            crossAxisCount: 3,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childCount: rest.length,
-            itemBuilder: (_, i) => CultureCard(item: rest[i]),
-          ),
-        ),
       ],
     );
   }
@@ -300,21 +362,37 @@ class CultureCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final color = _moodColor;
     final tags = (jsonDecode(item.moodTags) as List).cast<String>();
+    final selection = ref.watch(cardSelectionProvider);
+    final selecting = selection != null;
+    final selected = selection?.contains(item.id) ?? false;
 
     return GestureDetector(
-      onTap: () => openCultureItem(context, ref, item),
-      onLongPress: () {
-        HapticFeedback.mediumImpact();
-        ref.read(itemRepositoryProvider).togglePinned(item);
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              duration: const Duration(seconds: 1),
-              content: Text(item.pinnedOrder != null ? 'ピン留めを外したよ' : 'ピン留めしたよ'),
-            ),
-          );
+      onTap: () {
+        if (selecting) {
+          HapticFeedback.selectionClick();
+          final next = {...selection};
+          selected ? next.remove(item.id) : next.add(item.id);
+          ref.read(cardSelectionProvider.notifier).state = next;
+          return;
+        }
+        openCultureItem(context, ref, item);
       },
+      onLongPress: selecting
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              ref.read(itemRepositoryProvider).togglePinned(item);
+              ScaffoldMessenger.of(context)
+                ..hideCurrentSnackBar()
+                ..showSnackBar(
+                  SnackBar(
+                    duration: const Duration(seconds: 1),
+                    content: Text(
+                      item.pinnedOrder != null ? 'ピン留めを外したよ' : 'ピン留めしたよ',
+                    ),
+                  ),
+                );
+            },
       child: Container(
         decoration: BoxDecoration(
           color: CTColors.surface,
@@ -375,7 +453,7 @@ class CultureCard extends ConsumerWidget {
                 ),
               ],
             ),
-            if (item.pinnedOrder != null)
+            if (item.pinnedOrder != null && !selecting)
               Positioned(
                 top: 4,
                 right: 4,
@@ -389,6 +467,26 @@ class CultureCard extends ConsumerWidget {
                     Icons.push_pin_rounded,
                     size: 10,
                     color: Colors.white,
+                  ),
+                ),
+              ),
+            if (selecting)
+              Positioned(
+                top: 4,
+                right: 4,
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 20,
+                    color: selected
+                        ? CTColors.primary
+                        : CTColors.textSub.withValues(alpha: 0.5),
                   ),
                 ),
               ),

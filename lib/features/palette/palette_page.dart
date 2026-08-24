@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
@@ -12,15 +13,60 @@ import 'create_sticker_page.dart';
 import '../../core/stickers/voice_player.dart';
 import '../../core/widgets/border_color_sheet.dart';
 import '../../core/widgets/culture_picker_sheet.dart';
+import '../../core/widgets/selection_action_bar.dart';
 import 'sticker_exchange.dart';
+
+/// シールの選択モード。null=通常、Set=選択中のシールid
+final stickerSelectionProvider = StateProvider<Set<String>?>((ref) => null);
 
 /// シール素材のグリッド(シールタブに埋め込まれる)
 class PaletteBody extends ConsumerWidget {
   const PaletteBody({super.key});
 
+  Future<void> _deleteSelected(
+    BuildContext context,
+    WidgetRef ref,
+    List<Sticker> all,
+  ) async {
+    final selected = ref.read(stickerSelectionProvider) ?? const <String>{};
+    final targets = all.where((s) => selected.contains(s.id)).toList();
+    if (targets.isEmpty) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${targets.length}個のシールを削除する?'),
+        content: const Text('ページに貼ってある分もはがれるよ'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('やめる'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('削除'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final repo = ref.read(stickerRepositoryProvider);
+    for (final s in targets) {
+      await repo.deleteSticker(s);
+    }
+    ref.read(stickerSelectionProvider.notifier).state = null;
+    if (context.mounted) {
+      HapticFeedback.mediumImpact();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${targets.length}個のシールを削除したよ')));
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final stickers = ref.watch(stickersProvider);
+    final selection = ref.watch(stickerSelectionProvider);
 
     return stickers.when(
       data: (list) => list.isEmpty
@@ -52,15 +98,37 @@ class PaletteBody extends ConsumerWidget {
                 ],
               ),
             )
-          : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                mainAxisSpacing: 8,
-                crossAxisSpacing: 8,
-              ),
-              itemCount: list.length,
-              itemBuilder: (_, i) => _StickerTile(sticker: list[i]),
+          : Stack(
+              children: [
+                GridView.builder(
+                  padding: EdgeInsets.fromLTRB(
+                    12,
+                    4,
+                    12,
+                    selection != null ? 76 : 12,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8,
+                  ),
+                  itemCount: list.length,
+                  itemBuilder: (_, i) => _StickerTile(sticker: list[i]),
+                ),
+                if (selection != null)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 12,
+                    child: SelectionActionBar(
+                      count: selection.length,
+                      onDelete: () => _deleteSelected(context, ref, list),
+                      onClose: () =>
+                          ref.read(stickerSelectionProvider.notifier).state =
+                              null,
+                    ),
+                  ),
+              ],
             ),
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (e, _) => Center(child: Text('エラー: $e')),
@@ -76,9 +144,27 @@ class _StickerTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final repo = ref.watch(stickerRepositoryProvider);
+    final selection = ref.watch(stickerSelectionProvider);
+    final selecting = selection != null;
+    final selected = selection?.contains(sticker.id) ?? false;
 
     return GestureDetector(
-      onTap: () => showStickerSheet(context, ref, sticker),
+      onTap: () {
+        if (selecting) {
+          HapticFeedback.selectionClick();
+          final next = {...selection};
+          selected ? next.remove(sticker.id) : next.add(sticker.id);
+          ref.read(stickerSelectionProvider.notifier).state = next;
+          return;
+        }
+        showStickerSheet(context, ref, sticker);
+      },
+      onLongPress: selecting
+          ? null
+          : () {
+              HapticFeedback.mediumImpact();
+              ref.read(stickerSelectionProvider.notifier).state = {sticker.id};
+            },
       child: Container(
         decoration: BoxDecoration(
           color: CTColors.surface,
@@ -136,6 +222,20 @@ class _StickerTile extends ConsumerWidget {
                   name: sticker.creatorName,
                   color: colorFromHex(sticker.creatorColor),
                   radius: 8,
+                ),
+              ),
+            if (selecting)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Icon(
+                  selected
+                      ? Icons.check_circle_rounded
+                      : Icons.radio_button_unchecked_rounded,
+                  size: 20,
+                  color: selected
+                      ? CTColors.primary
+                      : CTColors.textSub.withValues(alpha: 0.5),
                 ),
               ),
           ],

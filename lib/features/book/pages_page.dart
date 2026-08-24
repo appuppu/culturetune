@@ -311,6 +311,48 @@ Future<void> createNewPage(BuildContext context, WidgetRef ref) async {
 
 /// ページの描画(ページャー・一覧グリッド共通)。
 /// interactive=trueなら要素タップでその場再生。
+/// ページタイトル: レトロポップな二層文字(白文字+アクセント色の落ち影)
+class _PageTitle extends StatelessWidget {
+  const _PageTitle({required this.title, required this.fontSize});
+
+  final String title;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final base = TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w900,
+      height: 1.25,
+      letterSpacing: 1.2,
+    );
+    final offset = fontSize * 0.07;
+    return Stack(
+      children: [
+        // 後ろ: アクセント色のずらし影(読みやすさ用のぼかし影も持たせる)
+        Transform.translate(
+          offset: Offset(offset, offset),
+          child: Text(
+            title,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: base.copyWith(
+              color: CTColors.primary,
+              shadows: const [Shadow(color: Colors.black38, blurRadius: 10)],
+            ),
+          ),
+        ),
+        Text(
+          title,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: base.copyWith(color: Colors.white),
+        ),
+      ],
+    );
+  }
+}
+
 class PageCanvas extends ConsumerWidget {
   const PageCanvas({super.key, required this.page, this.interactive = false});
 
@@ -390,24 +432,9 @@ class PageCanvas extends ConsumerWidget {
                       constraints.maxWidth * 0.05,
                       0,
                     ),
-                    child: Text(
-                      page.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: constraints.maxWidth * 0.062,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        height: 1.25,
-                        shadows: const [
-                          Shadow(
-                            color: Colors.black54,
-                            blurRadius: 6,
-                            offset: Offset(0, 1),
-                          ),
-                          Shadow(color: Colors.black38, blurRadius: 14),
-                        ],
-                      ),
+                    child: _PageTitle(
+                      title: page.title,
+                      fontSize: constraints.maxWidth * 0.064,
                     ),
                   ),
                 ),

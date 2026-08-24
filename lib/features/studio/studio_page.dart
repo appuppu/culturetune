@@ -66,6 +66,31 @@ class StudioPage extends ConsumerWidget {
                 const Spacer(),
                 IconButton(
                   visualDensity: VisualDensity.compact,
+                  onPressed: () {
+                    // 表示中のセグメント側の選択モードを切り替える
+                    final provider = segment == 0
+                        ? stickerSelectionProvider
+                        : cardSelectionProvider;
+                    final notifier = ref.read(provider.notifier);
+                    notifier.state = notifier.state == null ? <String>{} : null;
+                  },
+                  icon: Icon(
+                    Icons.checklist_rounded,
+                    color:
+                        ref.watch(
+                              segment == 0
+                                  ? stickerSelectionProvider
+                                  : cardSelectionProvider,
+                            ) !=
+                            null
+                        ? CTColors.primary
+                        : CTColors.textSub,
+                    size: 22,
+                  ),
+                  tooltip: 'えらんで削除',
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
                   onPressed: () => _showCreateSheet(context),
                   icon: Icon(
                     Icons.add_circle_rounded,
