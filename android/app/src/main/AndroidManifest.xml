@@ -48,7 +48,7 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
-                <data android:scheme="https" android:host="culturetune-app.github.io"/>
+                <data android:scheme="https" android:host="appuppu.github.io"/>
             </intent-filter>
             -->
         </activity>

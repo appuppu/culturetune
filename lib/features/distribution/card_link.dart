@@ -8,7 +8,7 @@ import '../../core/models/beam_card.dart';
 abstract final class CardLink {
   /// GitHub Pages等に配置する受け取りページのURL。
   /// web_distribution/README.md の手順で公開したURLに書き換える。
-  static const distributionPageUrl = 'https://culturetune-app.github.io/card/';
+  static const distributionPageUrl = 'https://appuppu.github.io/card/';
 
   /// アプリ直接起動用のカスタムスキーム(インストール済み端末用)
   static const scheme = 'culturetune';

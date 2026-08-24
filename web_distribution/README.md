@@ -6,11 +6,10 @@
 
 ## 1. GitHub Pagesで公開(無料・5分)
 
-1. GitHubで新しいリポジトリを作る(例: `card`)。Organization名を
-   `culturetune-app` にすると、アプリ側のデフォルトURLと一致します
+1. GitHubで新しいリポジトリを作る(例: `card`)。公開URLは `https://appuppu.github.io/card/`(設定済み)
 2. この`index.html`をリポジトリ直下に置いてpush
 3. リポジトリの Settings → Pages → Branch: main で公開
-4. 公開URL(例: `https://culturetune-app.github.io/card/`)を
+4. 公開URL(例: `https://appuppu.github.io/card/`)を
    `lib/features/distribution/card_link.dart` の `distributionPageUrl` に設定
 
 別のURLにした場合はアプリ側の定数を書き換えて再ビルドしてください。
@@ -42,7 +41,7 @@
 }
 ```
 2. XcodeでRunnerターゲット → Signing & Capabilities → 「Associated Domains」を追加し
-   `applinks:culturetune-app.github.io` を登録(要: あなたのTeamで署名)
+   `applinks:appuppu.github.io` を登録(要: あなたのTeamで署名)
 
 ### Android
 1. リポジトリに `.well-known/assetlinks.json` を追加:
