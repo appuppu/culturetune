@@ -456,13 +456,14 @@ Future<String?> importSharedPngBytes(WidgetRef ref, Uint8List bytes) async {
   final creatorColor = meta['creatorColor'] as String?;
 
   if (meta['kind'] == 'culturetune_page') {
-    final restored = await _importPage(
+    final result = await _importPage(
       ref,
       meta,
       flatPng: bytes,
       creatorName: creatorName,
       creatorColor: creatorColor,
     );
+    final restored = result.restored;
     final pageTitle = (meta['title'] as String?)?.trim() ?? '';
     await recordExchange(
       ref,
@@ -470,6 +471,7 @@ Future<String?> importSharedPngBytes(WidgetRef ref, Uint8List bytes) async {
       peerName: creatorName,
       peerColor: creatorColor,
       label: pageTitle.isEmpty ? 'シール帳' : 'シール帳「$pageTitle」',
+      pageId: result.pageId,
     );
     return restored
         ? '$creatorName のシール帳を追加したよ。追いデコして送り返すと交換日記になるよ'
@@ -606,8 +608,8 @@ Future<String?> _restoreLink(
 
 /// ページの復元。要素データがあれば「動くページ」として、
 /// なければ平坦画像を背景にしたページとして取り込む。
-/// 戻り値: 要素付きで復元できたか。
-Future<bool> _importPage(
+/// 戻り値: 要素付きで復元できたか + 作成したページid。
+Future<({bool restored, String pageId})> _importPage(
   WidgetRef ref,
   Map<String, dynamic> meta, {
   required Uint8List flatPng,
@@ -642,7 +644,7 @@ Future<bool> _importPage(
         updatedAt: now,
       ),
     );
-    return false;
+    return (restored: false, pageId: pageId);
   }
 
   // 背景
@@ -763,5 +765,5 @@ Future<bool> _importPage(
       ),
     );
   }
-  return true;
+  return (restored: true, pageId: pageId);
 }

@@ -83,12 +83,6 @@ class _PagesPageState extends ConsumerState<PagesPage> {
             child: Row(
               children: [
                 _FloatingAction(
-                  icon: Icons.history_rounded,
-                  tooltip: '交換のきろく',
-                  onTap: () => showExchangeHistorySheet(context),
-                ),
-                const SizedBox(width: 8),
-                _FloatingAction(
                   icon: _grid
                       ? Icons.fullscreen_rounded
                       : Icons.grid_view_rounded,
@@ -325,6 +319,18 @@ class _PagePagerState extends ConsumerState<_PagePager> {
                       GestureDetector(
                         onLongPress: () => _confirmDelete(page),
                         child: PageCanvas(page: page, interactive: true),
+                      ),
+                      // このシール帳の交換のきろく
+                      Positioned(
+                        right: 8,
+                        bottom: 104,
+                        child: _RoundIconButton(
+                          icon: Icons.history_rounded,
+                          onTap: () => showExchangeHistorySheet(
+                            context,
+                            pageId: page.id,
+                          ),
+                        ),
                       ),
                       // カメラロールに保存
                       Positioned(

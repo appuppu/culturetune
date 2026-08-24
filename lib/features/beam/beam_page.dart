@@ -213,6 +213,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
 
     Uint8List? bytes;
     String label;
+    String? pageIdForLog;
     if (action == 'sticker') {
       final stickers = await pickStickersForSend(context, ref);
       if (stickers == null || stickers.isEmpty || !mounted) return;
@@ -230,6 +231,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
         stickerMaxDim: 900,
       );
       label = page.title.isEmpty ? 'シール帳' : 'シール帳「${page.title}」';
+      pageIdForLog = page.id;
     }
     if (!mounted) return;
 
@@ -304,6 +306,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
         direction: BeamDirection.sent,
         peerName: peer.displayName,
         label: label,
+        pageId: pageIdForLog,
       );
     }
     if (!mounted) return;

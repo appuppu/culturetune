@@ -21,6 +21,7 @@ Future<void> recordExchange(
   required String peerName,
   String? peerColor,
   required String label,
+  String? pageId,
 }) async {
   final db = ref.read(databaseProvider);
   await db.insertBeam(
@@ -30,13 +31,15 @@ Future<void> recordExchange(
       peerName: peerName,
       peerColor: Value(peerColor),
       cardId: label,
+      pageId: Value(pageId),
       beamedAt: DateTime.now(),
     ),
   );
 }
 
-/// 交換履歴シート(だれと・なにを・いつ・どっち向き)
-void showExchangeHistorySheet(BuildContext context) {
+/// 交換履歴シート(だれと・なにを・いつ・どっち向き)。
+/// pageIdを渡すとそのシール帳のやり取りだけに絞る
+void showExchangeHistorySheet(BuildContext context, {String? pageId}) {
   showModalBottomSheet<void>(
     context: context,
     backgroundColor: CTColors.bgBase,
@@ -45,23 +48,29 @@ void showExchangeHistorySheet(BuildContext context) {
     ),
     builder: (_) => Consumer(
       builder: (context, ref, _) {
-        final list = ref.watch(exchangeHistoryProvider).valueOrNull ?? [];
+        var list = ref.watch(exchangeHistoryProvider).valueOrNull ?? [];
+        if (pageId != null) {
+          list = [
+            for (final b in list)
+              if (b.pageId == pageId) b,
+          ];
+        }
         return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(14),
+              Padding(
+                padding: const EdgeInsets.all(14),
                 child: Text(
-                  '交換のきろく',
-                  style: TextStyle(fontWeight: FontWeight.w800),
+                  pageId == null ? '交換のきろく' : 'このシール帳のきろく',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
               if (list.isEmpty)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(32, 8, 32, 32),
                   child: Text(
-                    'まだ交換履歴がないよ',
+                    pageId == null ? 'まだ交換履歴がないよ' : 'このシール帳はまだ交換してないよ',
                     style: TextStyle(color: CTColors.textSub),
                   ),
                 )

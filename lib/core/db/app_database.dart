@@ -105,7 +105,8 @@ class Beams extends Table {
   TextColumn get direction => textEnum<BeamDirection>()();
   TextColumn get peerName => text()();
   TextColumn get peerColor => text().nullable()(); // 相手のアバターカラー(hex)
-  TextColumn get cardId => text()();
+  TextColumn get cardId => text()(); // 交換内容ラベル(旧データはカードid)
+  TextColumn get pageId => text().nullable()(); // シール帳単位の履歴用
   DateTimeColumn get beamedAt => dateTime()();
 
   @override
@@ -119,7 +120,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -145,6 +146,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 8 && from >= 3) {
         await m.addColumn(stickerPages, stickerPages.showTitle);
+      }
+      if (from < 9) {
+        await m.addColumn(beams, beams.pageId);
       }
       if (from < 4) {
         await m.createTable(pageElements);

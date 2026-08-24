@@ -1311,6 +1311,15 @@ class $BeamsTable extends Beams with TableInfo<$BeamsTable, Beam> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _pageIdMeta = const VerificationMeta('pageId');
+  @override
+  late final GeneratedColumn<String> pageId = GeneratedColumn<String>(
+    'page_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _beamedAtMeta = const VerificationMeta(
     'beamedAt',
   );
@@ -1329,6 +1338,7 @@ class $BeamsTable extends Beams with TableInfo<$BeamsTable, Beam> {
     peerName,
     peerColor,
     cardId,
+    pageId,
     beamedAt,
   ];
   @override
@@ -1370,6 +1380,12 @@ class $BeamsTable extends Beams with TableInfo<$BeamsTable, Beam> {
     } else if (isInserting) {
       context.missing(_cardIdMeta);
     }
+    if (data.containsKey('page_id')) {
+      context.handle(
+        _pageIdMeta,
+        pageId.isAcceptableOrUnknown(data['page_id']!, _pageIdMeta),
+      );
+    }
     if (data.containsKey('beamed_at')) {
       context.handle(
         _beamedAtMeta,
@@ -1409,6 +1425,10 @@ class $BeamsTable extends Beams with TableInfo<$BeamsTable, Beam> {
         DriftSqlType.string,
         data['${effectivePrefix}card_id'],
       )!,
+      pageId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}page_id'],
+      ),
       beamedAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}beamed_at'],
@@ -1431,6 +1451,7 @@ class Beam extends DataClass implements Insertable<Beam> {
   final String peerName;
   final String? peerColor;
   final String cardId;
+  final String? pageId;
   final DateTime beamedAt;
   const Beam({
     required this.id,
@@ -1438,6 +1459,7 @@ class Beam extends DataClass implements Insertable<Beam> {
     required this.peerName,
     this.peerColor,
     required this.cardId,
+    this.pageId,
     required this.beamedAt,
   });
   @override
@@ -1454,6 +1476,9 @@ class Beam extends DataClass implements Insertable<Beam> {
       map['peer_color'] = Variable<String>(peerColor);
     }
     map['card_id'] = Variable<String>(cardId);
+    if (!nullToAbsent || pageId != null) {
+      map['page_id'] = Variable<String>(pageId);
+    }
     map['beamed_at'] = Variable<DateTime>(beamedAt);
     return map;
   }
@@ -1467,6 +1492,9 @@ class Beam extends DataClass implements Insertable<Beam> {
           ? const Value.absent()
           : Value(peerColor),
       cardId: Value(cardId),
+      pageId: pageId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pageId),
       beamedAt: Value(beamedAt),
     );
   }
@@ -1484,6 +1512,7 @@ class Beam extends DataClass implements Insertable<Beam> {
       peerName: serializer.fromJson<String>(json['peerName']),
       peerColor: serializer.fromJson<String?>(json['peerColor']),
       cardId: serializer.fromJson<String>(json['cardId']),
+      pageId: serializer.fromJson<String?>(json['pageId']),
       beamedAt: serializer.fromJson<DateTime>(json['beamedAt']),
     );
   }
@@ -1498,6 +1527,7 @@ class Beam extends DataClass implements Insertable<Beam> {
       'peerName': serializer.toJson<String>(peerName),
       'peerColor': serializer.toJson<String?>(peerColor),
       'cardId': serializer.toJson<String>(cardId),
+      'pageId': serializer.toJson<String?>(pageId),
       'beamedAt': serializer.toJson<DateTime>(beamedAt),
     };
   }
@@ -1508,6 +1538,7 @@ class Beam extends DataClass implements Insertable<Beam> {
     String? peerName,
     Value<String?> peerColor = const Value.absent(),
     String? cardId,
+    Value<String?> pageId = const Value.absent(),
     DateTime? beamedAt,
   }) => Beam(
     id: id ?? this.id,
@@ -1515,6 +1546,7 @@ class Beam extends DataClass implements Insertable<Beam> {
     peerName: peerName ?? this.peerName,
     peerColor: peerColor.present ? peerColor.value : this.peerColor,
     cardId: cardId ?? this.cardId,
+    pageId: pageId.present ? pageId.value : this.pageId,
     beamedAt: beamedAt ?? this.beamedAt,
   );
   Beam copyWithCompanion(BeamsCompanion data) {
@@ -1524,6 +1556,7 @@ class Beam extends DataClass implements Insertable<Beam> {
       peerName: data.peerName.present ? data.peerName.value : this.peerName,
       peerColor: data.peerColor.present ? data.peerColor.value : this.peerColor,
       cardId: data.cardId.present ? data.cardId.value : this.cardId,
+      pageId: data.pageId.present ? data.pageId.value : this.pageId,
       beamedAt: data.beamedAt.present ? data.beamedAt.value : this.beamedAt,
     );
   }
@@ -1536,6 +1569,7 @@ class Beam extends DataClass implements Insertable<Beam> {
           ..write('peerName: $peerName, ')
           ..write('peerColor: $peerColor, ')
           ..write('cardId: $cardId, ')
+          ..write('pageId: $pageId, ')
           ..write('beamedAt: $beamedAt')
           ..write(')'))
         .toString();
@@ -1543,7 +1577,7 @@ class Beam extends DataClass implements Insertable<Beam> {
 
   @override
   int get hashCode =>
-      Object.hash(id, direction, peerName, peerColor, cardId, beamedAt);
+      Object.hash(id, direction, peerName, peerColor, cardId, pageId, beamedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1553,6 +1587,7 @@ class Beam extends DataClass implements Insertable<Beam> {
           other.peerName == this.peerName &&
           other.peerColor == this.peerColor &&
           other.cardId == this.cardId &&
+          other.pageId == this.pageId &&
           other.beamedAt == this.beamedAt);
 }
 
@@ -1562,6 +1597,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
   final Value<String> peerName;
   final Value<String?> peerColor;
   final Value<String> cardId;
+  final Value<String?> pageId;
   final Value<DateTime> beamedAt;
   final Value<int> rowid;
   const BeamsCompanion({
@@ -1570,6 +1606,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
     this.peerName = const Value.absent(),
     this.peerColor = const Value.absent(),
     this.cardId = const Value.absent(),
+    this.pageId = const Value.absent(),
     this.beamedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -1579,6 +1616,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
     required String peerName,
     this.peerColor = const Value.absent(),
     required String cardId,
+    this.pageId = const Value.absent(),
     required DateTime beamedAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -1592,6 +1630,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
     Expression<String>? peerName,
     Expression<String>? peerColor,
     Expression<String>? cardId,
+    Expression<String>? pageId,
     Expression<DateTime>? beamedAt,
     Expression<int>? rowid,
   }) {
@@ -1601,6 +1640,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
       if (peerName != null) 'peer_name': peerName,
       if (peerColor != null) 'peer_color': peerColor,
       if (cardId != null) 'card_id': cardId,
+      if (pageId != null) 'page_id': pageId,
       if (beamedAt != null) 'beamed_at': beamedAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -1612,6 +1652,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
     Value<String>? peerName,
     Value<String?>? peerColor,
     Value<String>? cardId,
+    Value<String?>? pageId,
     Value<DateTime>? beamedAt,
     Value<int>? rowid,
   }) {
@@ -1621,6 +1662,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
       peerName: peerName ?? this.peerName,
       peerColor: peerColor ?? this.peerColor,
       cardId: cardId ?? this.cardId,
+      pageId: pageId ?? this.pageId,
       beamedAt: beamedAt ?? this.beamedAt,
       rowid: rowid ?? this.rowid,
     );
@@ -1646,6 +1688,9 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
     if (cardId.present) {
       map['card_id'] = Variable<String>(cardId.value);
     }
+    if (pageId.present) {
+      map['page_id'] = Variable<String>(pageId.value);
+    }
     if (beamedAt.present) {
       map['beamed_at'] = Variable<DateTime>(beamedAt.value);
     }
@@ -1663,6 +1708,7 @@ class BeamsCompanion extends UpdateCompanion<Beam> {
           ..write('peerName: $peerName, ')
           ..write('peerColor: $peerColor, ')
           ..write('cardId: $cardId, ')
+          ..write('pageId: $pageId, ')
           ..write('beamedAt: $beamedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4094,6 +4140,7 @@ typedef $$BeamsTableCreateCompanionBuilder =
       required String peerName,
       Value<String?> peerColor,
       required String cardId,
+      Value<String?> pageId,
       required DateTime beamedAt,
       Value<int> rowid,
     });
@@ -4104,6 +4151,7 @@ typedef $$BeamsTableUpdateCompanionBuilder =
       Value<String> peerName,
       Value<String?> peerColor,
       Value<String> cardId,
+      Value<String?> pageId,
       Value<DateTime> beamedAt,
       Value<int> rowid,
     });
@@ -4139,6 +4187,11 @@ class $$BeamsTableFilterComposer extends Composer<_$AppDatabase, $BeamsTable> {
 
   ColumnFilters<String> get cardId => $composableBuilder(
     column: $table.cardId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get pageId => $composableBuilder(
+    column: $table.pageId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4182,6 +4235,11 @@ class $$BeamsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get pageId => $composableBuilder(
+    column: $table.pageId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get beamedAt => $composableBuilder(
     column: $table.beamedAt,
     builder: (column) => ColumnOrderings(column),
@@ -4211,6 +4269,9 @@ class $$BeamsTableAnnotationComposer
 
   GeneratedColumn<String> get cardId =>
       $composableBuilder(column: $table.cardId, builder: (column) => column);
+
+  GeneratedColumn<String> get pageId =>
+      $composableBuilder(column: $table.pageId, builder: (column) => column);
 
   GeneratedColumn<DateTime> get beamedAt =>
       $composableBuilder(column: $table.beamedAt, builder: (column) => column);
@@ -4249,6 +4310,7 @@ class $$BeamsTableTableManager
                 Value<String> peerName = const Value.absent(),
                 Value<String?> peerColor = const Value.absent(),
                 Value<String> cardId = const Value.absent(),
+                Value<String?> pageId = const Value.absent(),
                 Value<DateTime> beamedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BeamsCompanion(
@@ -4257,6 +4319,7 @@ class $$BeamsTableTableManager
                 peerName: peerName,
                 peerColor: peerColor,
                 cardId: cardId,
+                pageId: pageId,
                 beamedAt: beamedAt,
                 rowid: rowid,
               ),
@@ -4267,6 +4330,7 @@ class $$BeamsTableTableManager
                 required String peerName,
                 Value<String?> peerColor = const Value.absent(),
                 required String cardId,
+                Value<String?> pageId = const Value.absent(),
                 required DateTime beamedAt,
                 Value<int> rowid = const Value.absent(),
               }) => BeamsCompanion.insert(
@@ -4275,6 +4339,7 @@ class $$BeamsTableTableManager
                 peerName: peerName,
                 peerColor: peerColor,
                 cardId: cardId,
+                pageId: pageId,
                 beamedAt: beamedAt,
                 rowid: rowid,
               ),
