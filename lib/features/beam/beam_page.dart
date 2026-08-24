@@ -661,6 +661,17 @@ class _PeerFieldState extends State<_PeerField> {
                 title: '4けたのコードで交換完了',
                 body: '画面に出るコードを口で伝えて、あいてが入力したら転送スタート。音楽や地図もそのまま届くよ',
               ),
+              const SizedBox(height: 4),
+              Text(
+                'しーるちょーはともだちと遊ぶともっと楽しい!\nまだ持っていない子には、ぜひ勧めてみてね',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.7,
+                  fontWeight: FontWeight.w700,
+                  color: CTColors.primary,
+                ),
+              ),
             ],
           ),
         ),

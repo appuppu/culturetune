@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/tokens.dart';
+import 'package:image_picker/image_picker.dart';
+
+import '../palette/batch_create_page.dart';
 import '../palette/create_sticker_page.dart';
 import '../palette/palette_page.dart';
 import '../post/post_flow.dart';
@@ -148,6 +151,29 @@ void _showCreateSheet(BuildContext context, WidgetRef ref) {
               Navigator.pop(sheetContext);
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const CreateStickerPage()),
+              );
+            },
+          ),
+          ListTile(
+            leading: const Icon(Icons.burst_mode_rounded),
+            title: const Text('シールをまとめてつくる'),
+            subtitle: const Text(
+              '複数の写真を一気にシール化(旅行の写真などに)',
+              style: TextStyle(fontSize: 12),
+            ),
+            onTap: () async {
+              Navigator.pop(sheetContext);
+              final files = await ImagePicker().pickMultiImage(
+                maxWidth: 1600,
+                imageQuality: 92,
+              );
+              if (files.isEmpty || !context.mounted) return;
+              await Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => BatchCreatePage(
+                    photoPaths: [for (final f in files) f.path],
+                  ),
+                ),
               );
             },
           ),

@@ -569,10 +569,7 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
   }
 
   Future<void> _createMessageNote() async {
-    final result = await showDialog<(String, Color)>(
-      context: context,
-      builder: (dialogContext) => const _MessageNoteDialog(),
-    );
+    final result = await showMessageNoteDialog(context);
     if (result == null || !mounted) return;
     setState(() => _processing = true);
     final notePath = await renderMessageNote(text: result.$1, bg: result.$2);
@@ -585,96 +582,5 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
       _previewCache.clear();
     });
     await _process();
-  }
-}
-
-/// メッセージシールの入力: ひとこと+メモ紙の色
-class _MessageNoteDialog extends StatefulWidget {
-  const _MessageNoteDialog();
-
-  @override
-  State<_MessageNoteDialog> createState() => _MessageNoteDialogState();
-}
-
-class _MessageNoteDialogState extends State<_MessageNoteDialog> {
-  final _controller = TextEditingController();
-  Color _bg = Colors.white;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: CTColors.bgBase,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(CTRadius.sheet),
-      ),
-      title: const Text('メッセージシール', style: TextStyle(fontSize: 16)),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _controller,
-              autofocus: true,
-              maxLength: 60,
-              maxLines: 3,
-              minLines: 1,
-              decoration: InputDecoration(
-                hintText: 'たんじょうびおめでとう! など',
-                filled: true,
-                fillColor: CTColors.surface,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(CTRadius.card),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              onChanged: (_) => setState(() {}),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final color in [Colors.white, ...CTColors.moodPalette])
-                  GestureDetector(
-                    onTap: () => setState(() => _bg = color),
-                    child: Container(
-                      margin: const EdgeInsets.only(right: 6),
-                      width: 26,
-                      height: 26,
-                      decoration: BoxDecoration(
-                        color: color,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: _bg == color
-                              ? CTColors.textMain
-                              : CTColors.textSub.withValues(alpha: 0.25),
-                          width: _bg == color ? 2.5 : 1,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('やめる'),
-        ),
-        FilledButton(
-          onPressed: _controller.text.trim().isEmpty
-              ? null
-              : () => Navigator.pop(context, (_controller.text.trim(), _bg)),
-          child: const Text('シールにする'),
-        ),
-      ],
-    );
   }
 }

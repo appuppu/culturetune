@@ -19,7 +19,12 @@ import '../../core/models/page_element_type.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/border_color_sheet.dart';
 import '../../core/widgets/thumb_image.dart';
+import '../../core/models/culture_category.dart';
+import '../../core/models/sticker_texture.dart';
+import '../../core/stickers/sticker_factory.dart';
+import '../beam/beam_profile_provider.dart';
 import '../palette/create_sticker_page.dart';
+import '../palette/message_note.dart';
 import '../post/post_flow.dart';
 import 'element_view.dart';
 import 'page_models.dart';
@@ -208,6 +213,39 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
           rotation: 0,
           z: _maxZ + 1,
         ),
+      ),
+    );
+  }
+
+  /// メッセージカードをその場で作ってページに貼る
+  Future<void> _addMessageNote() async {
+    final result = await showMessageNoteDialog(context);
+    if (result == null || !mounted) return;
+    final notePath = await renderMessageNote(text: result.$1, bg: result.$2);
+    if (!mounted) return;
+    final profile = await ref.read(beamProfileProvider.future);
+    final bytes = await StickerFactory.makeSticker(
+      sourcePath: notePath,
+      texture: StickerTexture.normal,
+      isCutout: false,
+    );
+    final id = await ref
+        .read(stickerRepositoryProvider)
+        .importProcessed(
+          pngBytes: bytes,
+          texture: StickerTexture.normal,
+          creatorName: profile.name,
+          creatorColor: profile.colorHex,
+          source: CardSource.self,
+          rawSourcePath: notePath,
+          borderColorHex: '#FFFFFF',
+        );
+    final sticker = await _db.findSticker(id);
+    if (sticker == null || !mounted) return;
+    await _addElement(
+      ResolvedElement(
+        element: _newElement(type: PageElementType.sticker, refId: id),
+        sticker: sticker,
       ),
     );
   }
@@ -970,6 +1008,11 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                       icon: Icons.style_rounded,
                       label: 'カード',
                       onTap: _addCard,
+                    ),
+                    _ToolButton(
+                      icon: Icons.sticky_note_2_rounded,
+                      label: 'メモ',
+                      onTap: _addMessageNote,
                     ),
                     _ToolButton(
                       icon: Icons.palette_rounded,
