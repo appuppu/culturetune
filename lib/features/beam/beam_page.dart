@@ -10,6 +10,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../app/providers.dart';
 import '../../core/beam/beam_transport.dart';
 import '../../core/beam/ble_presence.dart';
+import '../../core/beam/ble_transfer.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
@@ -54,6 +55,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     });
     transport.advertiseInfo.addListener(_onAdvInfo);
     transport.nearbyDeviceCount.addListener(_onAdvInfo);
+    _incomingSub = transport.incoming.listen(_onIncoming);
     _statusSub = transport.status.listen((s) {
       if (mounted) setState(() => _status = s);
     });
@@ -68,11 +70,143 @@ class _BeamPageState extends ConsumerState<BeamPage> {
         .removeListener(_onAdvInfo);
     _peersSub?.cancel();
     _statusSub?.cancel();
+    _incomingSub?.cancel();
     super.dispose();
   }
 
   void _onAdvInfo() {
     if (mounted) setState(() {});
+  }
+
+  StreamSubscription<({String name, Uint8List data})>? _incomingSub;
+
+  /// レーダー経由でBluetooth着信したシール/シール帳を受け取る
+  Future<void> _onIncoming(({String name, Uint8List data}) event) async {
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('${event.name} からとどいたよ!'),
+        content: const Text('うけとる?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('やめとく'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('うけとる'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    final message = await importSharedPngBytes(ref, event.data);
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message ?? '受け取ったデータを読めなかったよ')));
+  }
+
+  /// ふわふわ(相手)をタップ → わたす物を選んで直接Bluetooth送信
+  Future<void> _onPeerTap(BeamPeer peer) async {
+    HapticFeedback.selectionClick();
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: CTColors.bgBase,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(CTRadius.sheet),
+        ),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Text(
+                '${peer.displayName} に何をわたす?',
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.auto_fix_high_rounded),
+              title: const Text('シールをわたす'),
+              onTap: () => Navigator.pop(sheetContext, 'sticker'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.menu_book_rounded),
+              title: const Text('シール帳をわたす'),
+              onTap: () => Navigator.pop(sheetContext, 'page'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (action == null || !mounted) return;
+
+    Uint8List? bytes;
+    if (action == 'sticker') {
+      final sticker = await pickStickerForSend(context, ref);
+      if (sticker == null || !mounted) return;
+      bytes = await buildStickerSharePng(ref, sticker);
+    } else {
+      final page = await pickPageForSend(context, ref);
+      if (page == null || !mounted) return;
+      bytes = await buildPageSharePng(ref, page);
+    }
+    if (!mounted) return;
+
+    final profile = await ref.read(beamProfileProvider.future);
+    if (!mounted) return;
+    final progress = ValueNotifier<(double?, String)>((null, 'つなげてるよ…'));
+    var dialogOpen = true;
+    unawaited(
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('${peer.displayName} へ'),
+          content: ValueListenableBuilder(
+            valueListenable: progress,
+            builder: (_, value, _) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(value.$2),
+                const SizedBox(height: 12),
+                LinearProgressIndicator(
+                  value: value.$1,
+                  minHeight: 6,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ).then((_) => dialogOpen = false),
+    );
+    final ok = await BleTransfer.sendToPeer(
+      remoteId: peer.id,
+      senderName: profile.name,
+      data: bytes,
+      onProgress: (p, label) => progress.value = (p, label),
+    );
+    if (mounted && dialogOpen) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    if (!mounted) return;
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          ok
+              ? '${peer.displayName} にとどけたよ!'
+              : 'うまくとどかなかった…あいてがレーダーONか確認してもう一度試してね',
+        ),
+      ),
+    );
   }
 
   Future<void> _toggleRadar(bool on) async {
@@ -356,7 +490,11 @@ class _BeamPageState extends ConsumerState<BeamPage> {
               activeTrackColor: CTColors.primary,
             ),
             Expanded(
-              child: _PeerField(peers: _peers, radarOn: _radarOn),
+              child: _PeerField(
+                peers: _peers,
+                radarOn: _radarOn,
+                onPeerTap: _onPeerTap,
+              ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
@@ -453,12 +591,29 @@ class _BeamPageState extends ConsumerState<BeamPage> {
   }
 }
 
-/// 見つかった相手がぷかぷか浮かぶフィールド
-class _PeerField extends StatelessWidget {
-  const _PeerField({required this.peers, required this.radarOn});
+/// 見つかった相手がぷかぷか浮かぶフィールド。
+/// タップで交換開始、ドラッグで移動できる(重なり回避)。
+class _PeerField extends StatefulWidget {
+  const _PeerField({
+    required this.peers,
+    required this.radarOn,
+    required this.onPeerTap,
+  });
 
   final List<BeamPeer> peers;
   final bool radarOn;
+  final void Function(BeamPeer peer) onPeerTap;
+
+  @override
+  State<_PeerField> createState() => _PeerFieldState();
+}
+
+class _PeerFieldState extends State<_PeerField> {
+  /// ドラッグで動かした相手の位置(peer id → 位置)
+  final _dragOffsets = <String, Offset>{};
+
+  List<BeamPeer> get peers => widget.peers;
+  bool get radarOn => widget.radarOn;
 
   @override
   Widget build(BuildContext context) {
@@ -485,13 +640,34 @@ class _PeerField extends StatelessWidget {
     }
     return LayoutBuilder(
       builder: (context, constraints) {
+        Offset positionOf(BeamPeer peer, int i) {
+          final dragged = _dragOffsets[peer.id];
+          if (dragged != null) return dragged;
+          return Offset(
+            _fraction(peer.id, i, 13) * (constraints.maxWidth - 90),
+            _fraction(peer.id, i, 7) * (constraints.maxHeight - 110),
+          );
+        }
+
         return Stack(
           children: [
             for (final (i, peer) in peers.indexed)
               Positioned(
-                left: _fraction(peer.id, i, 13) * (constraints.maxWidth - 90),
-                top: _fraction(peer.id, i, 7) * (constraints.maxHeight - 110),
-                child: _FloatingPeer(peer: peer, index: i),
+                left: positionOf(peer, i).dx,
+                top: positionOf(peer, i).dy,
+                child: GestureDetector(
+                  onTap: () => widget.onPeerTap(peer),
+                  onPanUpdate: (details) {
+                    final current = positionOf(peer, i) + details.delta;
+                    setState(() {
+                      _dragOffsets[peer.id] = Offset(
+                        current.dx.clamp(0, constraints.maxWidth - 90),
+                        current.dy.clamp(0, constraints.maxHeight - 110),
+                      );
+                    });
+                  },
+                  child: _FloatingPeer(peer: peer, index: i),
+                ),
               ),
           ],
         );

@@ -26,6 +26,12 @@ class BlePresenceTransport implements BeamTransport {
   /// スキャン診断: 周囲に見えているBLE機器数(しーるちょー以外も含む)
   final ValueNotifier<int> nearbyDeviceCount = ValueNotifier(0);
 
+  /// レーダーON中にBluetoothで送りつけられたデータ(名前, PNGバイト列)
+  final _incomingController =
+      StreamController<({String name, Uint8List data})>.broadcast();
+  Stream<({String name, Uint8List data})> get incoming =>
+      _incomingController.stream;
+
   final _allSeen = <String>{};
   final _peersController = StreamController<List<BeamPeer>>.broadcast();
   final _statusController = StreamController<BeamPresenceStatus>.broadcast();
@@ -76,11 +82,21 @@ class BlePresenceTransport implements BeamTransport {
       try {
         if (Platform.isIOS) {
           _iosAdvertiseChannel.setMethodCallHandler((call) async {
-            if (call.method == 'advState') {
-              advertiseInfo.value = call.arguments as String? ?? '';
-              if (kDebugMode) {
-                debugPrint('[ble] advState=${advertiseInfo.value}');
-              }
+            switch (call.method) {
+              case 'advState':
+                advertiseInfo.value = call.arguments as String? ?? '';
+                if (kDebugMode) {
+                  debugPrint('[ble] advState=${advertiseInfo.value}');
+                }
+              case 'inboxData':
+                final map = (call.arguments as Map).cast<String, Object?>();
+                final data = map['data'] as Uint8List?;
+                if (data != null && !_incomingController.isClosed) {
+                  _incomingController.add((
+                    name: map['name'] as String? ?? 'ともだち',
+                    data: data,
+                  ));
+                }
             }
           });
           await _iosAdvertiseChannel.invokeMethod('start', {
@@ -191,5 +207,6 @@ class BlePresenceTransport implements BeamTransport {
     stop();
     _peersController.close();
     _statusController.close();
+    _incomingController.close();
   }
 }

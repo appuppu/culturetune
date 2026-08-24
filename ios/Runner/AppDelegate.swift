@@ -127,9 +127,9 @@ import Vision
         name: "culturetune/ble_advertise",
         binaryMessenger: controller.binaryMessenger
       )
-      bleAdvertiser.onEvent = { message in
+      bleAdvertiser.onEvent = { method, args in
         DispatchQueue.main.async {
-          bleChannel.invokeMethod("advState", arguments: message)
+          bleChannel.invokeMethod(method, arguments: args)
         }
       }
       bleChannel.setMethodCallHandler { [weak self] call, result in
@@ -315,17 +315,32 @@ class BleTransferPeripheral: NSObject, CBPeripheralManagerDelegate {
   }
 }
 
-/// CBPeripheralManagerがpoweredOnになるのを待ってからアドバタイズする
+/// レーダーの発信+受信ポスト。
+/// アドバタイズと同時に「inbox」サービスを公開し、相手(セントラル)からの
+/// 書き込みでシール/シール帳のデータを受け取る。
 class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
+  static let inboxMetaUUID = CBUUID(string: "0000C723-0000-1000-8000-00805F9B34FB")
+  static let inboxDataUUID = CBUUID(string: "0000C724-0000-1000-8000-00805F9B34FB")
+
   private var manager: CBPeripheralManager?
   private var pending: [String: Any]?
-  var onEvent: ((String) -> Void)?
+  private var serviceUuid: CBUUID?
+  private var serviceAdded = false
+
+  // 受信ポストの状態
+  private var expectedSize = 0
+  private var senderName = ""
+  private var inboxBuffer = Data()
+
+  var onEvent: ((String, Any?) -> Void)?
 
   func start(name: String, uuid: String) {
+    serviceUuid = CBUUID(string: uuid)
     pending = [
       CBAdvertisementDataLocalNameKey: name,
       CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: uuid)],
     ]
+    serviceAdded = false
     if manager == nil {
       manager = CBPeripheralManager(delegate: self, queue: nil)
     }
@@ -334,18 +349,35 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
 
   func stop() {
     pending = nil
+    expectedSize = 0
+    inboxBuffer = Data()
     manager?.stopAdvertising()
+    manager?.removeAllServices()
+    serviceAdded = false
   }
 
   private func advertiseIfReady() {
     guard let manager else { return }
     if manager.state != .poweredOn {
       if manager.state != .unknown && manager.state != .resetting {
-        onEvent?("state=\(manager.state.rawValue)")
+        onEvent?("advState", "state=\(manager.state.rawValue)")
       }
       return
     }
-    guard let pending else { return }
+    guard let pending, let serviceUuid else { return }
+    if !serviceAdded {
+      manager.removeAllServices()
+      let meta = CBMutableCharacteristic(
+        type: Self.inboxMetaUUID, properties: [.write],
+        value: nil, permissions: [.writeable])
+      let data = CBMutableCharacteristic(
+        type: Self.inboxDataUUID, properties: [.write, .writeWithoutResponse],
+        value: nil, permissions: [.writeable])
+      let service = CBMutableService(type: serviceUuid, primary: true)
+      service.characteristics = [meta, data]
+      manager.add(service)
+      serviceAdded = true
+    }
     manager.stopAdvertising()
     manager.startAdvertising(pending)
   }
@@ -356,9 +388,39 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
 
   func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
     if let error {
-      onEvent?("error: \(error.localizedDescription)")
+      onEvent?("advState", "error: \(error.localizedDescription)")
     } else {
-      onEvent?("ok")
+      onEvent?("advState", "ok")
+    }
+  }
+
+  func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+    var needsResponse: CBATTRequest?
+    for request in requests {
+      needsResponse = request
+      guard let value = request.value else { continue }
+      if request.characteristic.uuid == Self.inboxMetaUUID {
+        // ヘッダ: {"size":n,"name":"..."}
+        if let json = try? JSONSerialization.jsonObject(with: value) as? [String: Any] {
+          expectedSize = json["size"] as? Int ?? 0
+          senderName = json["name"] as? String ?? "ともだち"
+          inboxBuffer = Data()
+          onEvent?("inboxStart", ["name": senderName, "size": expectedSize])
+        }
+      } else if request.characteristic.uuid == Self.inboxDataUUID {
+        inboxBuffer.append(value)
+        if expectedSize > 0 && inboxBuffer.count >= expectedSize {
+          let received = inboxBuffer
+          expectedSize = 0
+          inboxBuffer = Data()
+          onEvent?(
+            "inboxData",
+            ["name": senderName, "data": FlutterStandardTypedData(bytes: received)])
+        }
+      }
+    }
+    if let needsResponse {
+      peripheral.respond(to: needsResponse, withResult: .success)
     }
   }
 }

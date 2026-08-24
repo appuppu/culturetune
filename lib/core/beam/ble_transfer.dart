@@ -18,6 +18,11 @@ abstract final class BleTransfer {
 
   static const channel = MethodChannel('culturetune/ble_transfer');
 
+  /// レーダーの発信サービス(受信ポスト同居)
+  static final presenceGuid = Guid('0000c71e-0000-1000-8000-00805f9b34fb');
+  static final inboxMetaGuid = Guid('0000c723-0000-1000-8000-00805f9b34fb');
+  static final inboxDataGuid = Guid('0000c724-0000-1000-8000-00805f9b34fb');
+
   static bool get canSend => Platform.isIOS;
 
   /// 送信待機を開始。イベント(状態・進捗)はonEventに流れる。
@@ -37,6 +42,57 @@ abstract final class BleTransfer {
     try {
       await channel.invokeMethod('stop');
     } catch (_) {}
+  }
+
+  /// レーダーで見つけた相手(remoteId)へ直接送りつける。
+  /// 相手はレーダーON(=受信ポスト公開中)である必要がある。
+  static Future<bool> sendToPeer({
+    required String remoteId,
+    required String senderName,
+    required Uint8List data,
+    required void Function(double progress, String label) onProgress,
+  }) async {
+    final device = BluetoothDevice.fromId(remoteId);
+    try {
+      onProgress(0, 'つなげてるよ…');
+      await device.connect(timeout: const Duration(seconds: 15));
+      final services = await device.discoverServices();
+      final service = services.firstWhere((s) => s.uuid == presenceGuid);
+      final meta = service.characteristics.firstWhere(
+        (c) => c.uuid == inboxMetaGuid,
+      );
+      final dataChar = service.characteristics.firstWhere(
+        (c) => c.uuid == inboxDataGuid,
+      );
+
+      await meta.write(
+        utf8.encode(jsonEncode({'size': data.length, 'name': senderName})),
+      );
+
+      final chunkSize = (device.mtuNow - 3).clamp(20, 512);
+      var sent = 0;
+      var chunkIndex = 0;
+      while (sent < data.length) {
+        final end = (sent + chunkSize).clamp(0, data.length);
+        // 流量制御: 8チャンクごとに応答ありで書いて詰まりを防ぐ
+        final flush = chunkIndex % 8 == 7 || end == data.length;
+        await dataChar.write(data.sublist(sent, end), withoutResponse: !flush);
+        sent = end;
+        chunkIndex++;
+        if (chunkIndex % 8 == 0 || sent == data.length) {
+          onProgress(sent / data.length, 'わたし中… ${(sent / 1024).round()}KB');
+        }
+      }
+      onProgress(1, 'とどけたよ!');
+      return true;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[ble_transfer] sendToPeer failed: $e');
+      return false;
+    } finally {
+      try {
+        await device.disconnect();
+      } catch (_) {}
+    }
   }
 
   /// 近くの送信待機中の相手を探して受信する。
