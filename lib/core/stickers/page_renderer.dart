@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 
 import '../../features/book/page_models.dart';
 import '../data/item_repository.dart';
+import '../files/doc_paths.dart';
 import '../db/app_database.dart';
 import '../models/page_element_type.dart';
 import 'sticker_repository.dart';
@@ -14,6 +15,7 @@ import 'sticker_repository.dart';
 /// シール帳ページを1080x1920のPNGへ描画する(交換の送信用)。
 /// エディタ画面を開かずにページを画像化できる。
 Future<Uint8List> renderPageToPng({
+  required Directory docs,
   required AppDatabase db,
   required StickerRepository stickerRepo,
   required ItemRepository itemRepo,
@@ -28,7 +30,7 @@ Future<Uint8List> renderPageToPng({
   // 背景
   canvas.drawRect(Rect.fromLTWH(0, 0, w, h), Paint()..color = _bgColor(page));
   if (page.bgImagePath != null) {
-    final bg = await _loadImage(page.bgImagePath!);
+    final bg = await _loadImage(resolveDocFile(docs, page.bgImagePath!));
     if (bg != null) _drawCover(canvas, bg, Rect.fromLTWH(0, 0, w, h));
   }
 
@@ -57,6 +59,7 @@ Future<Uint8List> renderPageToPng({
           canvas,
           ProfilePayload.fromJson(el.payload),
           w * 0.18 * el.scale,
+          docs,
         );
       case PageElementType.text:
         final payload = TextPayload.fromJson(el.payload);
@@ -215,6 +218,7 @@ Future<void> _drawProfile(
   Canvas canvas,
   ProfilePayload payload,
   double size,
+  Directory docs,
 ) async {
   final radius = switch (payload.shape) {
     ProfileShape.circle => size / 2,
@@ -249,7 +253,7 @@ Future<void> _drawProfile(
 
   ui.Image? avatar;
   if (payload.avatarPath != null) {
-    avatar = await _loadImage(payload.avatarPath!);
+    avatar = await _loadImage(resolveDocFile(docs, payload.avatarPath!));
   }
   if (avatar != null) {
     _drawCover(canvas, avatar, rect.deflate(pad).inflate(size * 0.21));

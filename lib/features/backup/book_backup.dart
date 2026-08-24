@@ -10,6 +10,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
 import '../../core/db/app_database.dart';
+import '../../core/files/doc_paths.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/models/page_element_type.dart';
 import '../../core/models/sticker_texture.dart';
@@ -107,7 +108,9 @@ Future<String?> exportBookBackup(WidgetRef ref) async {
   final pageRows = <Map<String, dynamic>>[];
   for (final p in pages) {
     String? bgZip;
-    final bg = p.bgImagePath;
+    final bg = p.bgImagePath == null
+        ? null
+        : resolveDocFile(docs, p.bgImagePath!);
     if (bg != null) {
       final ext = bg.contains('.') ? bg.substring(bg.lastIndexOf('.')) : '.png';
       final rel = 'pages_bg/${p.id}$ext';
@@ -130,7 +133,9 @@ Future<String?> exportBookBackup(WidgetRef ref) async {
     String? avatarZip;
     if (e.type == PageElementType.profile) {
       final payload = ProfilePayload.fromJson(e.payload);
-      final avatar = payload.avatarPath;
+      final avatar = payload.avatarPath == null
+          ? null
+          : resolveDocFile(docs, payload.avatarPath!);
       if (avatar != null) {
         final rel = 'avatars_recv/${e.id}.png';
         if (await addAbs('files/$rel', avatar)) avatarZip = rel;
@@ -330,9 +335,7 @@ Future<String> importBookBackup(WidgetRef ref) async {
             id: raw['id'] as String,
             title: drift.Value(raw['title'] as String? ?? ''),
             bgColor: drift.Value(raw['bgColor'] as String?),
-            bgImagePath: drift.Value(
-              bgZip == null ? null : '${docs.path}/$bgZip',
-            ),
+            bgImagePath: drift.Value(bgZip),
             createdAt: _dt(raw['createdAt']),
             updatedAt: _dt(raw['updatedAt']),
           ),
@@ -355,7 +358,7 @@ Future<String> importBookBackup(WidgetRef ref) async {
         frameColorHex: old.frameColorHex,
         name: old.name,
         colorHex: old.colorHex,
-        avatarPath: avatarZip == null ? null : '${docs.path}/$avatarZip',
+        avatarPath: avatarZip,
       ).toJson();
     }
     await db

@@ -12,6 +12,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../app/providers.dart';
 import '../../core/db/app_database.dart';
+import '../../core/files/doc_paths.dart';
 import '../../core/models/beam_card.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/models/page_element_type.dart';
@@ -97,6 +98,7 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
 
   // 表向きの画像(LINE上でそのまま見える)
   final flatPng = await renderPageToPng(
+    docs: ref.read(documentsDirProvider),
     db: db,
     stickerRepo: stickerRepo,
     itemRepo: ref.read(itemRepositoryProvider),
@@ -122,9 +124,13 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
         // 受け取った側でも同じ見た目になるよう、名前・色・写真を焼き込む
         final payload = ProfilePayload.fromJson(el.payload);
         String? avatarB64;
-        final avatarPath = payload.isSnapshot
+        final docsDir = ref.read(documentsDirProvider);
+        final rawAvatar = payload.isSnapshot
             ? payload.avatarPath
             : profile.imagePath;
+        final avatarPath = rawAvatar == null
+            ? null
+            : resolveDocFile(docsDir, rawAvatar);
         if (avatarPath != null && File(avatarPath).existsSync()) {
           final avatarBytes = await File(avatarPath).readAsBytes();
           embeddedBytes += avatarBytes.length;
@@ -203,7 +209,9 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
   // 背景画像(受け取ったページを再共有するケース)
   String? bgPng;
   if (!overflow && page.bgImagePath != null) {
-    final file = File(page.bgImagePath!);
+    final file = File(
+      resolveDocFile(ref.read(documentsDirProvider), page.bgImagePath!),
+    );
     if (file.existsSync()) {
       final bytes = await file.readAsBytes();
       embeddedBytes += bytes.length;
@@ -375,7 +383,7 @@ Future<bool> _importPage(
       StickerPagesCompanion.insert(
         id: pageId,
         title: drift.Value(title),
-        bgImagePath: drift.Value(bgFile.path),
+        bgImagePath: drift.Value('pages_bg/$pageId.png'),
         createdAt: now,
         updatedAt: now,
       ),
@@ -391,7 +399,7 @@ Future<bool> _importPage(
     if (!bgDir.existsSync()) bgDir.createSync(recursive: true);
     final bgFile = File('${bgDir.path}/$pageId.png');
     await bgFile.writeAsBytes(base64Decode(bgPng));
-    bgImagePath = bgFile.path;
+    bgImagePath = 'pages_bg/$pageId.png';
   }
 
   await db.upsertPage(
@@ -426,7 +434,7 @@ Future<bool> _importPage(
           if (!avatarDir.existsSync()) avatarDir.createSync(recursive: true);
           final avatarFile = File('${avatarDir.path}/${uuid.v4()}.png');
           await avatarFile.writeAsBytes(base64Decode(avatarPng));
-          avatarPath = avatarFile.path;
+          avatarPath = toRelativeDocPath(docs, avatarFile.path);
         }
         payload = ProfilePayload(
           shape:

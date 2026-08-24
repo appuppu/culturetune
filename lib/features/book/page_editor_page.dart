@@ -14,6 +14,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../app/providers.dart';
 import '../../core/db/app_database.dart';
+import '../../core/files/doc_paths.dart';
 import '../../core/models/page_element_type.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/border_color_sheet.dart';
@@ -543,7 +544,9 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
       setState(() => _bgImagePath = null);
       await _persistPage();
       if (oldPath != null) {
-        final file = File(oldPath);
+        final file = File(
+          resolveDocFile(ref.read(documentsDirProvider), oldPath),
+        );
         if (await file.exists()) await file.delete();
       }
       return;
@@ -578,11 +581,12 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
       '${bgDir.path}/${widget.page.id}_${DateTime.now().millisecondsSinceEpoch}.png',
     );
     await dest.writeAsBytes(bytes.buffer.asUint8List());
+    final rel = toRelativeDocPath(docs, dest.path);
     final oldPath = _bgImagePath;
-    setState(() => _bgImagePath = dest.path);
+    setState(() => _bgImagePath = rel);
     await _persistPage();
-    if (oldPath != null && oldPath != dest.path) {
-      final old = File(oldPath);
+    if (oldPath != null && oldPath != rel) {
+      final old = File(resolveDocFile(docs, oldPath));
       if (await old.exists()) await old.delete();
     }
   }
@@ -625,11 +629,12 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
     );
     await File(cropped.path).copy(dest.path);
 
+    final rel = toRelativeDocPath(docs, dest.path);
     final oldPath = _bgImagePath;
-    setState(() => _bgImagePath = dest.path);
+    setState(() => _bgImagePath = rel);
     await _persistPage();
-    if (oldPath != null && oldPath != dest.path) {
-      final old = File(oldPath);
+    if (oldPath != null && oldPath != rel) {
+      final old = File(resolveDocFile(docs, oldPath));
       if (await old.exists()) await old.delete();
     }
   }
@@ -764,8 +769,16 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                               ),
                               image: _bgImagePath != null
                                   ? DecorationImage(
-                                      image: FileImage(File(_bgImagePath!)),
+                                      image: FileImage(
+                                        File(
+                                          resolveDocFile(
+                                            ref.read(documentsDirProvider),
+                                            _bgImagePath!,
+                                          ),
+                                        ),
+                                      ),
                                       fit: BoxFit.cover,
+                                      onError: (_, _) {},
                                     )
                                   : null,
                               boxShadow: ctCardShadow,

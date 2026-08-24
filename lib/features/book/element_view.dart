@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
+import '../../core/files/doc_paths.dart';
 import '../../core/models/page_element_type.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/sticker_image.dart';
@@ -180,7 +181,10 @@ class ProfileShapeAvatar extends ConsumerWidget {
     if (payload.isSnapshot) {
       name = payload.name!;
       color = colorFromHex(payload.colorHex);
-      imagePath = payload.avatarPath;
+      final rawPath = payload.avatarPath;
+      imagePath = rawPath == null
+          ? null
+          : resolveDocFile(ref.watch(documentsDirProvider), rawPath);
     } else {
       final profile = ref.watch(beamProfileProvider).valueOrNull;
       name = profile?.name ?? '?';

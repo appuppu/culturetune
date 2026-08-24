@@ -52,7 +52,13 @@ Future<void> openCultureItem(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
     ),
-    builder: (_) => _CultureSheet(item: item),
+    // 中身がどれだけ育っても画面の8割で頭打ちにし、超えた分はスクロール
+    builder: (sheetContext) => ConstrainedBox(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(sheetContext).size.height * 0.8,
+      ),
+      child: SingleChildScrollView(child: _CultureSheet(item: item)),
+    ),
   );
 }
 
@@ -212,6 +218,17 @@ class _CultureSheetState extends ConsumerState<_CultureSheet> {
   Widget build(BuildContext context) {
     final tags = (jsonDecode(item.moodTags) as List).cast<String>();
     final color = _moodColor;
+
+    // モーダルが伸びる問題の調査ログ(デバッグビルドのみ)
+    if (kDebugMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final size = context.size;
+        debugPrint(
+          '[culture_modal] category=${item.category.name} '
+          'sheetSize=$size yt=${_yt != null} url=${item.url}',
+        );
+      });
+    }
 
     return SafeArea(
       child: Padding(

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../app/providers.dart';
+import '../../core/files/doc_paths.dart';
 import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
 import 'element_view.dart';
@@ -381,7 +382,16 @@ class PageCanvas extends ConsumerWidget {
         fit: StackFit.expand,
         children: [
           if (page.bgImagePath != null)
-            Image.file(File(page.bgImagePath!), fit: BoxFit.cover),
+            Image.file(
+              File(
+                resolveDocFile(
+                  ref.watch(documentsDirProvider),
+                  page.bgImagePath!,
+                ),
+              ),
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+            ),
           FutureBuilder(
             future: loadResolvedElements(db, page.id),
             builder: (context, snapshot) {
