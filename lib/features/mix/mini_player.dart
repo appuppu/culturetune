@@ -104,30 +104,24 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final h = math.max(200.0, w * 9 / 16);
-              // WebViewはClipRRectが効かない環境があるため
-              // saveLayerで確実にクロップする
-              return ClipRRect(
-                clipBehavior: Clip.antiAliasWithSaveLayer,
-                borderRadius: BorderRadius.vertical(
-                  top: Radius.circular(CTRadius.inner(CTRadius.card, 2)),
-                ),
-                child: SizedBox(
+          // WebView(プラットフォームビュー)はFlutterの角丸クリップが
+          // 効かないため、カードの内側に余白を取って収める
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                final h = math.max(200.0, w * 9 / 16);
+                return SizedBox(
                   width: w,
                   height: h,
-                  child: ColoredBox(
-                    color: Colors.black,
-                    child: YoutubePlayer(
-                      controller: _controller!,
-                      aspectRatio: 16 / 9,
-                    ),
+                  child: YoutubePlayer(
+                    controller: _controller!,
+                    aspectRatio: 16 / 9,
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
           Row(
             children: [

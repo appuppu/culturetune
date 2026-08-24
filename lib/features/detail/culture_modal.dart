@@ -52,12 +52,16 @@ Future<void> openCultureItem(
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
     ),
-    // 中身がどれだけ育っても画面の8割で頭打ちにし、超えた分はスクロール
-    builder: (sheetContext) => ConstrainedBox(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(sheetContext).size.height * 0.8,
+    // 下スワイプで閉じられ、中身が多いときはシート内でスクロール
+    builder: (sheetContext) => DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.62,
+      minChildSize: 0.35,
+      maxChildSize: 0.85,
+      builder: (context, scrollController) => SingleChildScrollView(
+        controller: scrollController,
+        child: _CultureSheet(item: item),
       ),
-      child: SingleChildScrollView(child: _CultureSheet(item: item)),
     ),
   );
 }

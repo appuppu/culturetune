@@ -26,13 +26,22 @@ class BlePresenceTransport implements BeamTransport {
   /// スキャン診断: 周囲に見えているBLE機器数(しーるちょー以外も含む)
   final ValueNotifier<int> nearbyDeviceCount = ValueNotifier(0);
 
-  /// レーダーON中にBluetoothで届いたデータ(名前, 確認コード, PNGバイト列)
+  /// 受信リクエスト(相手が渡そうとしている: 名前, サイズ, 確認コード)
+  final _requestController =
+      StreamController<({String name, int size, String code})>.broadcast();
+  Stream<({String name, int size, String code})> get incomingRequests =>
+      _requestController.stream;
+
+  /// 承認後に受信完了したデータ(名前, PNGバイト列)
   final _incomingController =
-      StreamController<
-        ({String name, String code, Uint8List data})
-      >.broadcast();
-  Stream<({String name, String code, Uint8List data})> get incoming =>
+      StreamController<({String name, Uint8List data})>.broadcast();
+  Stream<({String name, Uint8List data})> get incoming =>
       _incomingController.stream;
+
+  /// 受信リクエストへの返事(コード照合はUI側で済ませてから呼ぶ)
+  Future<void> approveIncoming() =>
+      _iosAdvertiseChannel.invokeMethod('approve');
+  Future<void> rejectIncoming() => _iosAdvertiseChannel.invokeMethod('reject');
 
   final _allSeen = <String>{};
   final _peersController = StreamController<List<BeamPeer>>.broadcast();
@@ -90,13 +99,21 @@ class BlePresenceTransport implements BeamTransport {
                 if (kDebugMode) {
                   debugPrint('[ble] advState=${advertiseInfo.value}');
                 }
+              case 'inboxRequest':
+                final map = (call.arguments as Map).cast<String, Object?>();
+                if (!_requestController.isClosed) {
+                  _requestController.add((
+                    name: map['name'] as String? ?? 'ともだち',
+                    size: (map['size'] as num?)?.toInt() ?? 0,
+                    code: map['code'] as String? ?? '',
+                  ));
+                }
               case 'inboxData':
                 final map = (call.arguments as Map).cast<String, Object?>();
                 final data = map['data'] as Uint8List?;
                 if (data != null && !_incomingController.isClosed) {
                   _incomingController.add((
                     name: map['name'] as String? ?? 'ともだち',
-                    code: map['code'] as String? ?? '',
                     data: data,
                   ));
                 }

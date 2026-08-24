@@ -134,6 +134,12 @@ import Vision
       }
       bleChannel.setMethodCallHandler { [weak self] call, result in
         switch call.method {
+        case "approve":
+          self?.bleAdvertiser.respond(ok: true)
+          result(true)
+        case "reject":
+          self?.bleAdvertiser.respond(ok: false)
+          result(true)
         case "start":
           guard let args = call.arguments as? [String: Any],
             let name = args["name"] as? String,
@@ -321,6 +327,7 @@ class BleTransferPeripheral: NSObject, CBPeripheralManagerDelegate {
 class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
   static let inboxMetaUUID = CBUUID(string: "0000C723-0000-1000-8000-00805F9B34FB")
   static let inboxDataUUID = CBUUID(string: "0000C724-0000-1000-8000-00805F9B34FB")
+  static let inboxRespUUID = CBUUID(string: "0000C725-0000-1000-8000-00805F9B34FB")
 
   private var manager: CBPeripheralManager?
   private var pending: [String: Any]?
@@ -330,8 +337,9 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
   // 受信ポストの状態
   private var expectedSize = 0
   private var senderName = ""
-  private var senderCode = ""
   private var inboxBuffer = Data()
+  private var approved = false
+  private var respChar: CBMutableCharacteristic?
 
   var onEvent: ((String, Any?) -> Void)?
 
@@ -374,13 +382,30 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
       let data = CBMutableCharacteristic(
         type: Self.inboxDataUUID, properties: [.write, .writeWithoutResponse],
         value: nil, permissions: [.writeable])
+      let resp = CBMutableCharacteristic(
+        type: Self.inboxRespUUID, properties: [.notify], value: nil, permissions: [])
+      respChar = resp
       let service = CBMutableService(type: serviceUuid, primary: true)
-      service.characteristics = [meta, data]
+      service.characteristics = [meta, data, resp]
       manager.add(service)
       serviceAdded = true
     }
     manager.stopAdvertising()
     manager.startAdvertising(pending)
+  }
+
+  /// 受け取り側の承認/拒否を送信側へ通知する
+  func respond(ok: Bool) {
+    approved = ok
+    if !ok {
+      expectedSize = 0
+      inboxBuffer = Data()
+    }
+    if let manager, let respChar {
+      manager.updateValue(
+        (ok ? "ok" : "no").data(using: .utf8)!, for: respChar,
+        onSubscribedCentrals: nil)
+    }
   }
 
   func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
@@ -405,23 +430,27 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
         if let json = try? JSONSerialization.jsonObject(with: value) as? [String: Any] {
           expectedSize = json["size"] as? Int ?? 0
           senderName = json["name"] as? String ?? "ともだち"
-          senderCode = json["code"] as? String ?? ""
           inboxBuffer = Data()
-          onEvent?("inboxStart", ["name": senderName, "size": expectedSize])
+          approved = false
+          onEvent?(
+            "inboxRequest",
+            [
+              "name": senderName,
+              "size": expectedSize,
+              "code": json["code"] as? String ?? "",
+            ])
         }
       } else if request.characteristic.uuid == Self.inboxDataUUID {
+        guard approved else { continue }
         inboxBuffer.append(value)
         if expectedSize > 0 && inboxBuffer.count >= expectedSize {
           let received = inboxBuffer
           expectedSize = 0
           inboxBuffer = Data()
+          approved = false
           onEvent?(
             "inboxData",
-            [
-              "name": senderName,
-              "code": senderCode,
-              "data": FlutterStandardTypedData(bytes: received),
-            ])
+            ["name": senderName, "data": FlutterStandardTypedData(bytes: received)])
         }
       }
     }

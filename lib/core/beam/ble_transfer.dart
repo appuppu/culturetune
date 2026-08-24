@@ -7,6 +7,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
+/// 相手指定送信の結果
+enum SendResult { sent, rejected, timeout, cancelled, error }
+
 /// シール/シール帳のPNGバイト列をBluetoothでその場転送する。
 /// 送信側(iOSのみ): ネイティブのGATTサーバでアドバタイズ+チャンク通知。
 /// 受信側(iOS/Android): スキャン→接続→METAでサイズ取得→通知でチャンク受信。
@@ -22,6 +25,7 @@ abstract final class BleTransfer {
   static final presenceGuid = Guid('0000c71e-0000-1000-8000-00805f9b34fb');
   static final inboxMetaGuid = Guid('0000c723-0000-1000-8000-00805f9b34fb');
   static final inboxDataGuid = Guid('0000c724-0000-1000-8000-00805f9b34fb');
+  static final inboxRespGuid = Guid('0000c725-0000-1000-8000-00805f9b34fb');
 
   static bool get canSend => Platform.isIOS;
 
@@ -46,12 +50,14 @@ abstract final class BleTransfer {
 
   /// レーダーで見つけた相手(remoteId)へ直接送りつける。
   /// 相手はレーダーON(=受信ポスト公開中)である必要がある。
-  static Future<bool> sendToPeer({
+  /// 流れ: 接続 → リクエスト送信 → 相手がコード入力で承認 → データ転送。
+  static Future<SendResult> sendToPeer({
     required String remoteId,
     required String senderName,
     required String code,
     required Uint8List data,
     required void Function(double progress, String label) onProgress,
+    required ValueListenable<bool> cancelled,
   }) async {
     final device = BluetoothDevice.fromId(remoteId);
     try {
@@ -59,43 +65,77 @@ abstract final class BleTransfer {
       await device.connect(timeout: const Duration(seconds: 15));
       final services = await device.discoverServices();
       final service = services.firstWhere((s) => s.uuid == presenceGuid);
-      final meta = service.characteristics.firstWhere(
-        (c) => c.uuid == inboxMetaGuid,
-      );
-      final dataChar = service.characteristics.firstWhere(
-        (c) => c.uuid == inboxDataGuid,
-      );
+      BluetoothCharacteristic charOf(Guid guid) =>
+          service.characteristics.firstWhere((c) => c.uuid == guid);
 
-      await meta.write(
+      // 承認通知を購読してからリクエストを送る
+      final resp = charOf(inboxRespGuid);
+      final approval = Completer<String>();
+      final respSub = resp.onValueReceived.listen((value) {
+        if (!approval.isCompleted) approval.complete(utf8.decode(value));
+      });
+      device.cancelWhenDisconnected(respSub);
+      await resp.setNotifyValue(true);
+
+      await charOf(inboxMetaGuid).write(
         utf8.encode(
           jsonEncode({'size': data.length, 'name': senderName, 'code': code}),
         ),
       );
 
-      final chunkSize = (device.mtuNow - 3).clamp(20, 512);
+      onProgress(0, 'あいての承認を待ってるよ…\nコードを教えてあげてね');
+      String answer;
+      try {
+        answer = await Future.any([
+          approval.future,
+          Future<String>.delayed(const Duration(minutes: 2), () => 'timeout'),
+          _waitCancel(cancelled),
+        ]);
+      } on Object {
+        answer = 'error';
+      }
+      if (answer == 'cancelled') return SendResult.cancelled;
+      if (answer == 'no') return SendResult.rejected;
+      if (answer != 'ok') return SendResult.timeout;
+
+      // MTUを待ってから最大チャンクで送る(初期値のままだと極端に遅い)
+      final mtu = await device.mtu.first;
+      final chunkSize = (mtu - 3).clamp(20, 512);
+      final dataChar = charOf(inboxDataGuid);
       var sent = 0;
       var chunkIndex = 0;
       while (sent < data.length) {
+        if (cancelled.value) return SendResult.cancelled;
         final end = (sent + chunkSize).clamp(0, data.length);
-        // 流量制御: 8チャンクごとに応答ありで書いて詰まりを防ぐ
-        final flush = chunkIndex % 8 == 7 || end == data.length;
+        // 流量制御: 一定間隔で応答ありで書いて詰まりを防ぐ
+        final flush = chunkIndex % 24 == 23 || end == data.length;
         await dataChar.write(data.sublist(sent, end), withoutResponse: !flush);
         sent = end;
         chunkIndex++;
-        if (chunkIndex % 8 == 0 || sent == data.length) {
-          onProgress(sent / data.length, 'わたし中… ${(sent / 1024).round()}KB');
+        if (chunkIndex % 12 == 0 || sent == data.length) {
+          onProgress(
+            sent / data.length,
+            'わたし中… ${(sent / 1024).round()}KB / ${(data.length / 1024).round()}KB',
+          );
         }
       }
       onProgress(1, 'とどけたよ!');
-      return true;
+      return SendResult.sent;
     } catch (e) {
       if (kDebugMode) debugPrint('[ble_transfer] sendToPeer failed: $e');
-      return false;
+      return SendResult.error;
     } finally {
       try {
         await device.disconnect();
       } catch (_) {}
     }
+  }
+
+  static Future<String> _waitCancel(ValueListenable<bool> cancelled) async {
+    while (!cancelled.value) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return 'cancelled';
   }
 
   /// 近くの送信待機中の相手を探して受信する。

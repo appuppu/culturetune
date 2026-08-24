@@ -55,7 +55,8 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     });
     transport.advertiseInfo.addListener(_onAdvInfo);
     transport.nearbyDeviceCount.addListener(_onAdvInfo);
-    _incomingSub = transport.incoming.listen(_onIncoming);
+    _requestSub = transport.incomingRequests.listen(_onIncomingRequest);
+    _incomingSub = transport.incoming.listen(_onIncomingData);
     _statusSub = transport.status.listen((s) {
       if (mounted) setState(() => _status = s);
     });
@@ -70,6 +71,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
         .removeListener(_onAdvInfo);
     _peersSub?.cancel();
     _statusSub?.cancel();
+    _requestSub?.cancel();
     _incomingSub?.cancel();
     super.dispose();
   }
@@ -78,16 +80,17 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     if (mounted) setState(() {});
   }
 
-  StreamSubscription<({String name, String code, Uint8List data})>?
-  _incomingSub;
+  StreamSubscription<({String name, int size, String code})>? _requestSub;
+  StreamSubscription<({String name, Uint8List data})>? _incomingSub;
 
-  /// レーダー経由でBluetooth着信したシール/シール帳を受け取る。
-  /// 安全のため、渡す側の画面に出ているコードを入力して照合する。
-  Future<void> _onIncoming(
-    ({String name, String code, Uint8List data}) event,
+  /// 受信リクエスト: 相手が渡そうとしている。
+  /// コードを入力して承認すると転送が始まる。
+  Future<void> _onIncomingRequest(
+    ({String name, int size, String code}) request,
   ) async {
     if (!mounted) return;
     HapticFeedback.mediumImpact();
+    final transport = ref.read(beamTransportProvider);
     final controller = TextEditingController();
     String? errorText;
     final ok = await showDialog<bool>(
@@ -96,7 +99,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
       builder: (dialogContext) => StatefulBuilder(
         builder: (context, setDialogState) {
           void submit() {
-            if (controller.text == event.code) {
+            if (controller.text == request.code) {
               Navigator.pop(dialogContext, true);
             } else {
               setDialogState(() => errorText = 'コードがちがうよ');
@@ -104,11 +107,16 @@ class _BeamPageState extends ConsumerState<BeamPage> {
           }
 
           return AlertDialog(
-            title: Text('${event.name} からとどいたよ!'),
+            title: Text('${request.name} からリクエスト!'),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('あいての画面に出ている4けたのコードを入力してね'),
+                Text(
+                  'シールかシール帳が届きそうだよ'
+                  '(${(request.size / 1024).round()}KB)。\n'
+                  'あいての画面に出ている4けたのコードを入力してね',
+                  style: const TextStyle(fontSize: 13, height: 1.5),
+                ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: controller,
@@ -133,7 +141,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('やめとく'),
+                child: const Text('ことわる'),
               ),
               FilledButton(onPressed: submit, child: const Text('うけとる')),
             ],
@@ -141,9 +149,24 @@ class _BeamPageState extends ConsumerState<BeamPage> {
         },
       ),
     );
-    if (ok != true || !mounted) return;
+    if (!mounted) return;
+    if (ok == true) {
+      await transport.approveIncoming();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('うけとり中…そのまま待っててね')));
+    } else {
+      await transport.rejectIncoming();
+    }
+  }
+
+  /// 承認済みの転送が完了した(取り込んで通知)
+  Future<void> _onIncomingData(({String name, Uint8List data}) event) async {
+    if (!mounted) return;
     final message = await importSharedPngBytes(ref, event.data);
     if (!mounted) return;
+    HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message ?? '受け取ったデータを読めなかったよ')));
@@ -204,6 +227,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     // 安全のための確認コード(あいてが入力する)
     final code = (1000 + Random().nextInt(9000)).toString();
     final progress = ValueNotifier<(double?, String)>((null, 'つなげてるよ…'));
+    final cancelled = ValueNotifier(false);
     var dialogOpen = true;
     unawaited(
       showDialog<void>(
@@ -228,7 +252,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(value.$2),
+                Text(value.$2, textAlign: TextAlign.center),
                 const SizedBox(height: 12),
                 LinearProgressIndicator(
                   value: value.$1,
@@ -238,30 +262,41 @@ class _BeamPageState extends ConsumerState<BeamPage> {
               ],
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                cancelled.value = true;
+                Navigator.pop(dialogContext);
+              },
+              child: const Text('やめる'),
+            ),
+          ],
         ),
       ).then((_) => dialogOpen = false),
     );
-    final ok = await BleTransfer.sendToPeer(
+    final result = await BleTransfer.sendToPeer(
       remoteId: peer.id,
       senderName: profile.name,
       code: code,
       data: bytes,
       onProgress: (p, label) => progress.value = (p, label),
+      cancelled: cancelled,
     );
     if (mounted && dialogOpen) {
       Navigator.of(context, rootNavigator: true).pop();
     }
     if (!mounted) return;
     HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? '${peer.displayName} にとどけたよ!'
-              : 'うまくとどかなかった…あいてがレーダーONか確認してもう一度試してね',
-        ),
-      ),
-    );
+    final message = switch (result) {
+      SendResult.sent => '${peer.displayName} にとどけたよ!',
+      SendResult.rejected => '${peer.displayName} にことわられちゃった…',
+      SendResult.timeout => '返事がなかったみたい。あいての画面を確認してもう一度試してね',
+      SendResult.cancelled => 'やめたよ',
+      SendResult.error => 'うまくとどかなかった…あいてがレーダーONか確認してもう一度試してね',
+    };
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _toggleRadar(bool on) async {
