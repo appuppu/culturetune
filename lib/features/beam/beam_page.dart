@@ -48,10 +48,12 @@ class _BeamPageState extends ConsumerState<BeamPage> {
   StreamSubscription<List<BeamPeer>>? _peersSub;
   StreamSubscription<BeamPresenceStatus>? _statusSub;
 
+  late final BlePresenceTransport _transport;
+
   @override
   void initState() {
     super.initState();
-    final transport = ref.read(beamTransportProvider);
+    final transport = _transport = ref.read(beamTransportProvider);
     _peersSub = transport.peers.listen((p) {
       if (mounted) setState(() => _peers = p);
     });
@@ -66,11 +68,9 @@ class _BeamPageState extends ConsumerState<BeamPage> {
 
   @override
   void dispose() {
-    ref.read(beamTransportProvider).advertiseInfo.removeListener(_onAdvInfo);
-    ref
-        .read(beamTransportProvider)
-        .nearbyDeviceCount
-        .removeListener(_onAdvInfo);
+    // dispose内でrefは使えないため、initStateで確保した参照を使う
+    _transport.advertiseInfo.removeListener(_onAdvInfo);
+    _transport.nearbyDeviceCount.removeListener(_onAdvInfo);
     _peersSub?.cancel();
     _statusSub?.cancel();
     _requestSub?.cancel();
@@ -469,7 +469,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
   Widget build(BuildContext context) {
     final profile = ref.watch(beamProfileProvider).valueOrNull;
 
-    return Container(
+    return Material(
       color: CTColors.bgBase,
       child: SafeArea(
         child: Column(
