@@ -246,7 +246,7 @@ class _EmptyBook extends StatelessWidget {
               icon: Icons.favorite_rounded,
               colorIndex: 0,
               title: '推し活ログ',
-              body: '推しの写真を切り抜きシールに。新曲カードを貼れば、タップでその場で再生できるよ',
+              body: '新曲やMV、出演作をカードにして集めよう。シール帳に貼ればタップでその場で再生できるよ',
             ),
             const _UseCaseCard(
               icon: Icons.flight_takeoff_rounded,
