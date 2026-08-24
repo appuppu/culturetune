@@ -82,7 +82,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       body: Stack(
         children: [
           Positioned.fill(
+            // テーマ変更時はキーを変えてタブを作り直す。
+            // (constの子はテーマが変わっても再ビルドされず、
+            // CTColors直読みの色が前のテーマのまま残ってしまうため)
             child: IndexedStack(
+              key: ValueKey('tabs_${ref.watch(themeProvider).id}'),
               index: _index,
               children: const [PagesPage(), StudioPage(), BeamPage()],
             ),

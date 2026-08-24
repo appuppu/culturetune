@@ -217,6 +217,17 @@ class AppDatabase extends _$AppDatabase {
         StickersCompanion(borderColor: Value(colorHex)),
       );
 
+  /// シール帳(ページ要素)で使われているシールのid一覧
+  Stream<Set<String>> watchUsedStickerIds() =>
+      (select(
+        pageElements,
+      )..where((t) => t.type.equalsValue(PageElementType.sticker))).watch().map(
+        (rows) => {
+          for (final r in rows)
+            if (r.refId != null) r.refId!,
+        },
+      );
+
   Future<void> updateStickerLink(String id, String? linkedItemId) =>
       (update(stickers)..where((t) => t.id.equals(id))).write(
         StickersCompanion(linkedItemId: Value(linkedItemId)),

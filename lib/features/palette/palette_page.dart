@@ -19,6 +19,11 @@ import 'sticker_exchange.dart';
 /// シールの選択モード。null=通常、Set=選択中のシールid
 final stickerSelectionProvider = StateProvider<Set<String>?>((ref) => null);
 
+/// シール帳に貼ってあるシールのid(貼ってあるものが分かるように)
+final usedStickerIdsProvider = StreamProvider<Set<String>>(
+  (ref) => ref.watch(databaseProvider).watchUsedStickerIds(),
+);
+
 /// シール素材のグリッド(シールタブに埋め込まれる)
 class PaletteBody extends ConsumerWidget {
   const PaletteBody({super.key});
@@ -31,11 +36,17 @@ class PaletteBody extends ConsumerWidget {
     final selected = ref.read(stickerSelectionProvider) ?? const <String>{};
     final targets = all.where((s) => selected.contains(s.id)).toList();
     if (targets.isEmpty) return;
+    final used = ref.read(usedStickerIdsProvider).valueOrNull ?? const {};
+    final usedCount = targets.where((s) => used.contains(s.id)).length;
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text('${targets.length}個のシールを削除する?'),
-        content: const Text('シール帳に貼ってある分もはがれるよ'),
+        content: Text(
+          usedCount == 0
+              ? 'シール帳には貼っていないシールだよ'
+              : 'うち$usedCount個はシール帳に貼ってあるよ(はがれて消えるよ)',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
@@ -147,6 +158,9 @@ class _StickerTile extends ConsumerWidget {
     final selection = ref.watch(stickerSelectionProvider);
     final selecting = selection != null;
     final selected = selection?.contains(sticker.id) ?? false;
+    final used =
+        ref.watch(usedStickerIdsProvider).valueOrNull?.contains(sticker.id) ??
+        false;
 
     return GestureDetector(
       onTap: () {
@@ -214,7 +228,7 @@ class _StickerTile extends ConsumerWidget {
                   ),
                 ),
               ),
-            if (sticker.source == CardSource.beam)
+            if (sticker.source == CardSource.beam && !selecting)
               Positioned(
                 top: 0,
                 left: 0,
@@ -222,6 +236,24 @@ class _StickerTile extends ConsumerWidget {
                   name: sticker.creatorName,
                   color: colorFromHex(sticker.creatorColor),
                   radius: 8,
+                ),
+              ),
+            // 選択モード中: シール帳に貼ってあるシールが分かるように
+            if (selecting && used)
+              Positioned(
+                top: 0,
+                left: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(3),
+                  decoration: BoxDecoration(
+                    color: CTColors.lavender,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.menu_book_rounded,
+                    size: 10,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             if (selecting)

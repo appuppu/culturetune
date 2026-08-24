@@ -7,11 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/data/post_draft.dart';
-import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/candy_button.dart';
 
-/// 全カテゴリ共通の仕上げ画面。エモタグ・気分カラー・メモを入力して保存。
+/// 全カテゴリ共通の仕上げ画面。気分カラー・メモを入力して保存。
 class FinishPage extends ConsumerStatefulWidget {
   const FinishPage({super.key, required this.draft});
 
@@ -22,7 +21,6 @@ class FinishPage extends ConsumerStatefulWidget {
 }
 
 class _FinishPageState extends ConsumerState<FinishPage> {
-  final Set<String> _tags = {};
   late Color _moodColor = widget.draft.category.color;
   final _memoController = TextEditingController();
   bool _saving = false;
@@ -45,7 +43,7 @@ class _FinishPageState extends ConsumerState<FinishPage> {
           .saveDraft(
             widget.draft,
             oshiLevel: 3,
-            moodTags: _tags.toList(),
+            moodTags: const [],
             moodColor: _moodColorHex,
             memo: _memoController.text,
           );
@@ -79,34 +77,6 @@ class _FinishPageState extends ConsumerState<FinishPage> {
           children: [
             _PreviewCard(draft: draft, borderColor: _moodColor),
             const SizedBox(height: 24),
-            const _SectionLabel('エモタグ(3つまで)'),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final tag in moodTagsFor(draft.category))
-                  FilterChip(
-                    label: Text(tag),
-                    selected: _tags.contains(tag),
-                    onSelected: (on) {
-                      setState(() {
-                        if (on) {
-                          if (_tags.length < 3) _tags.add(tag);
-                        } else {
-                          _tags.remove(tag);
-                        }
-                      });
-                    },
-                    selectedColor: _moodColor.withValues(alpha: 0.3),
-                    backgroundColor: CTColors.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(CTRadius.pill),
-                    ),
-                    labelStyle: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 20),
             const _SectionLabel('気分カラー'),
             Row(
               children: [
