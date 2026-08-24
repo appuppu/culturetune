@@ -91,7 +91,7 @@ Future<Uint8List> renderPageToPng({
   // シール帳のフチ(内側に沿わせて描く)
   final borderColor = _pageBorderColor(page);
   if (borderColor != null) {
-    final stroke = w * 0.022;
+    final stroke = w * 0.012;
     canvas.drawRect(
       Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, h - stroke),
       Paint()

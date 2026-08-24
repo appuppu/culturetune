@@ -19,12 +19,20 @@ import 'page_editor_page.dart';
 import 'page_models.dart';
 
 /// シール帳タブ: 最新ページを全面に出し、縦スワイプでページをめくる。
-/// ページ上のカード/シールはその場でタップ再生できる。
-class PagesPage extends ConsumerWidget {
+/// 一覧ボタンで画面遷移せず、その場で2列グリッドにアニメーション切替する。
+class PagesPage extends ConsumerStatefulWidget {
   const PagesPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PagesPage> createState() => _PagesPageState();
+}
+
+class _PagesPageState extends ConsumerState<PagesPage> {
+  bool _grid = false;
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final pages = ref.watch(stickerPagesProvider);
 
     return SafeArea(
@@ -35,7 +43,36 @@ class PagesPage extends ConsumerWidget {
             child: pages.when(
               data: (list) => list.isEmpty
                   ? _EmptyBook(onCreate: () => createNewPage(context, ref))
-                  : _PagePager(pages: list),
+                  : AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 260),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                          scale: Tween(
+                            begin: 0.94,
+                            end: 1.0,
+                          ).animate(animation),
+                          child: child,
+                        ),
+                      ),
+                      child: _grid
+                          ? _PageGrid(
+                              key: const ValueKey('grid'),
+                              pages: list,
+                              onOpen: (i) => setState(() {
+                                _currentIndex = i;
+                                _grid = false;
+                              }),
+                            )
+                          : _PagePager(
+                              key: ValueKey('pager_$_currentIndex'),
+                              pages: list,
+                              initialPage: _currentIndex,
+                              onPageChanged: (i) => _currentIndex = i,
+                            ),
+                    ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('エラー: $e')),
             ),
@@ -46,11 +83,14 @@ class PagesPage extends ConsumerWidget {
             child: Row(
               children: [
                 _FloatingAction(
-                  icon: Icons.grid_view_rounded,
-                  tooltip: 'シール帳一覧',
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const PagesGridPage()),
-                  ),
+                  icon: _grid
+                      ? Icons.fullscreen_rounded
+                      : Icons.grid_view_rounded,
+                  tooltip: _grid ? '1冊ずつ見る' : 'シール帳一覧',
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _grid = !_grid);
+                  },
                 ),
                 const SizedBox(width: 8),
                 _FloatingAction(
@@ -63,6 +103,69 @@ class PagesPage extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 2列のシール帳一覧(その場でページャーと切り替わる)。
+/// タップで1冊表示に戻り、長押しで削除。
+class _PageGrid extends ConsumerWidget {
+  const _PageGrid({super.key, required this.pages, required this.onOpen});
+
+  final List<StickerPage> pages;
+  final void Function(int index) onOpen;
+
+  Future<void> _confirmDelete(
+    BuildContext context,
+    WidgetRef ref,
+    StickerPage page,
+  ) async {
+    HapticFeedback.mediumImpact();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('このシール帳を削除する?'),
+        content: Text(
+          page.title.isEmpty
+              ? '${page.updatedAt.month}/${page.updatedAt.day}のシール帳'
+              : page.title,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('やめとく'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('削除', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (ok == true && context.mounted) {
+      await ref.read(databaseProvider).deletePage(page.id);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return GridView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 44, 12, 16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 9 / 16,
+      ),
+      itemCount: pages.length,
+      itemBuilder: (_, i) => GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onOpen(i);
+        },
+        onLongPress: () => _confirmDelete(context, ref, pages[i]),
+        child: PageCanvas(page: pages[i]),
       ),
     );
   }
@@ -134,17 +237,27 @@ class _EmptyBook extends StatelessWidget {
 
 /// 縦スワイプのページめくり(次のページがチラ見えする)
 class _PagePager extends ConsumerStatefulWidget {
-  const _PagePager({required this.pages});
+  const _PagePager({
+    super.key,
+    required this.pages,
+    this.initialPage = 0,
+    this.onPageChanged,
+  });
 
   final List<StickerPage> pages;
+  final int initialPage;
+  final void Function(int index)? onPageChanged;
 
   @override
   ConsumerState<_PagePager> createState() => _PagePagerState();
 }
 
 class _PagePagerState extends ConsumerState<_PagePager> {
-  final _controller = PageController(viewportFraction: 0.965);
-  int _current = 0;
+  late final _controller = PageController(
+    viewportFraction: 0.965,
+    initialPage: widget.initialPage,
+  );
+  late int _current = widget.initialPage;
 
   @override
   void dispose() {
@@ -191,6 +304,7 @@ class _PagePagerState extends ConsumerState<_PagePager> {
           onPageChanged: (i) {
             HapticFeedback.selectionClick();
             setState(() => _current = i);
+            widget.onPageChanged?.call(i);
           },
           itemBuilder: (_, i) {
             final page = widget.pages[i];
@@ -465,7 +579,7 @@ class PageCanvas extends ConsumerWidget {
           ? null
           : BoxDecoration(
               borderRadius: BorderRadius.circular(CTRadius.card),
-              border: Border.all(color: _border!, width: 6),
+              border: Border.all(color: _border!, width: 4),
             ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
@@ -542,103 +656,6 @@ class PageCanvas extends ConsumerWidget {
             ),
         ],
       ),
-    );
-  }
-}
-
-/// ページ一覧(グリッド)。長押しで削除
-class PagesGridPage extends ConsumerWidget {
-  const PagesGridPage({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pages = ref.watch(stickerPagesProvider).valueOrNull ?? [];
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('シール帳一覧')),
-      body: pages.isEmpty
-          ? Center(
-              child: Text(
-                'まだシール帳がないよ',
-                style: TextStyle(color: CTColors.textSub),
-              ),
-            )
-          : GridView.builder(
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                mainAxisSpacing: 10,
-                crossAxisSpacing: 10,
-                childAspectRatio: 9 / 16,
-              ),
-              itemCount: pages.length,
-              itemBuilder: (_, i) {
-                final page = pages[i];
-                return GestureDetector(
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => PageEditorPage(page: page),
-                    ),
-                  ),
-                  child: Stack(
-                    children: [
-                      Positioned.fill(child: PageCanvas(page: page)),
-                      // 削除は長押しではなく明示的なメニューから
-                      Positioned(
-                        top: 4,
-                        right: 4,
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.3),
-                            shape: BoxShape.circle,
-                          ),
-                          child: PopupMenuButton<String>(
-                            padding: EdgeInsets.zero,
-                            iconSize: 16,
-                            icon: const Icon(
-                              Icons.more_horiz_rounded,
-                              color: Colors.white,
-                            ),
-                            onSelected: (value) async {
-                              if (value != 'delete') return;
-                              final ok = await showDialog<bool>(
-                                context: context,
-                                builder: (dialogContext) => AlertDialog(
-                                  title: const Text('このシール帳を削除する?'),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, false),
-                                      child: const Text('やめとく'),
-                                    ),
-                                    TextButton(
-                                      onPressed: () =>
-                                          Navigator.pop(dialogContext, true),
-                                      child: const Text(
-                                        '削除',
-                                        style: TextStyle(color: Colors.red),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (ok == true) {
-                                await ref
-                                    .read(databaseProvider)
-                                    .deletePage(page.id);
-                              }
-                            },
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(value: 'delete', child: Text('削除')),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
     );
   }
 }

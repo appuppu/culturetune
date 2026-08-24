@@ -839,7 +839,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                                     ),
                                     border: Border.all(
                                       color: _pageBorderColor!,
-                                      width: 7,
+                                      width: 4,
                                     ),
                                   ),
                             decoration: BoxDecoration(
