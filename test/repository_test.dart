@@ -86,7 +86,7 @@ void main() {
       expect(File(repo.resolveThumb(item.thumbPath!)).existsSync(), isTrue);
     });
 
-    test('saveBeamCardはsource=beamで保存し履歴も記録する', () async {
+    test('saveBeamCardはsource=beamで保存する(履歴は交換単位で別記録)', () async {
       const card = BeamCard(
         senderName: 'みお',
         senderColor: '#4EECD2',
@@ -102,11 +102,10 @@ void main() {
       expect(item!.source, CardSource.beam);
       expect(item.beamFrom, 'みお');
 
+      // 履歴はrecordExchange(1交換=1件)側の責務になったため、
+      // saveBeamCard自体は履歴を挿入しない
       final beams = await db.watchBeams().first;
-      expect(beams, hasLength(1));
-      expect(beams.single.direction, BeamDirection.received);
-      expect(beams.single.peerName, 'みお');
-      expect(beams.single.cardId, id);
+      expect(beams, isEmpty);
     });
 
     test('deleteItemで行とサムネが消える', () async {
