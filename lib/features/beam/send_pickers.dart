@@ -7,24 +7,6 @@ import '../../app/providers.dart';
 import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
 import '../book/pages_page.dart';
-import '../palette/sticker_exchange.dart';
-
-/// シールを選んで共有シートで送る(交換タブ)
-Future<void> pickAndSendSticker(BuildContext context, WidgetRef ref) async {
-  final selected = await pickStickerForSend(context, ref);
-  if (selected == null || !context.mounted) return;
-  await shareStickerWithMeta(ref, selected);
-}
-
-/// シール帳を選んで共有シートで送る(交換タブ)
-Future<void> pickAndSendPage(BuildContext context, WidgetRef ref) async {
-  final selected = await pickPageForSend(context, ref);
-  if (selected == null || !context.mounted) return;
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(const SnackBar(content: Text('シール帳を画像にしてるよ…')));
-  await sharePageWithMeta(ref, selected);
-}
 
 /// シールを1つ選ぶ(選ぶだけ。送り方は呼び出し側が決める)
 Future<Sticker?> pickStickerForSend(BuildContext context, WidgetRef ref) async {

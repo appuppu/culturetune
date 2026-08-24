@@ -17,7 +17,6 @@ import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
 import '../palette/sticker_exchange.dart';
 import 'beam_profile_provider.dart';
-import 'qr_exchange.dart';
 import 'send_pickers.dart';
 
 final beamTransportProvider = Provider<BlePresenceTransport>((ref) {
@@ -275,10 +274,6 @@ class _BeamPageState extends ConsumerState<BeamPage> {
       await transport.stop();
     }
   }
-
-  Future<void> _pickStickerToSend() => pickAndSendSticker(context, ref);
-
-  Future<void> _pickPageToSend() => pickAndSendPage(context, ref);
 
   void _editProfile() {
     final profile = ref.read(beamProfileProvider).valueOrNull;
@@ -553,70 +548,16 @@ class _BeamPageState extends ConsumerState<BeamPage> {
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: CTColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        _pickStickerToSend();
-                      },
-                      icon: const Icon(Icons.auto_fix_high_rounded, size: 18),
-                      label: const Text('シールを送る'),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: CTColors.mint,
-                        foregroundColor: CTColors.onAccent(CTColors.mint),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        _pickPageToSend();
-                      },
-                      icon: const Icon(Icons.menu_book_rounded, size: 18),
-                      label: const Text('シール帳を送る'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            // 受け取り: QRその場交換と、LINE等で届いたPNGの読み込み
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  FilledButton.tonalIcon(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const SpotExchangePage(),
-                      ),
-                    ),
-                    icon: const Icon(Icons.bluetooth_rounded, size: 18),
-                    label: const Text('その場で交換(Bluetooth / QR)'),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => importStickerFromGallery(context, ref),
-                    icon: const Icon(Icons.download_rounded, size: 18),
-                    label: const Text('もらったシール/シール帳を取り込む'),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'LINEなどで届いた画像を選ぶと、自分のパレット/シール帳に追加されるよ',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 10, color: CTColors.textSub),
-                  ),
-                ],
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
+              child: Text(
+                'みつけたともだちをタップすると、シールやシール帳を渡せるよ。\n'
+                '遠くのともだちには、シールやシール帳の共有ボタンからLINEで送れるよ',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  height: 1.6,
+                  color: CTColors.textSub,
+                ),
               ),
             ),
           ],
