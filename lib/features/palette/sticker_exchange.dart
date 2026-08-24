@@ -38,6 +38,17 @@ Map<String, dynamic> _linkOf(CultureItem item) => {
 /// シールを「メタデータ入りPNG」としてLINE等の共有シートで送る。
 /// 非消費型: 送っても手元のシールはなくならない(複製が届く)。
 Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
+  final embedded = await buildStickerSharePng(ref, sticker);
+  final dir = await getTemporaryDirectory();
+  final file = File('${dir.path}/culture_sticker_${sticker.id}.png');
+  await file.writeAsBytes(embedded);
+  await Share.shareXFiles([
+    XFile(file.path),
+  ], text: 'シールをあげる! しーるちょーの交換タブ「受け取る」で使えるよ');
+}
+
+/// シールのメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)
+Future<Uint8List> buildStickerSharePng(WidgetRef ref, Sticker sticker) async {
   final repo = ref.read(stickerRepositoryProvider);
   final db = ref.read(databaseProvider);
   final bytes = await File(repo.resolve(sticker.imagePath)).readAsBytes();
@@ -79,13 +90,7 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
     if (sticker.borderColor != null) 'borderColor': sticker.borderColor,
   };
 
-  final embedded = StickerShare.embed(bytes, meta);
-  final dir = await getTemporaryDirectory();
-  final file = File('${dir.path}/culture_sticker_${sticker.id}.png');
-  await file.writeAsBytes(embedded);
-  await Share.shareXFiles([
-    XFile(file.path),
-  ], text: 'シールをあげる! しーるちょーの交換タブ「受け取る」で使えるよ');
+  return StickerShare.embed(bytes, meta);
 }
 
 /// シール帳ページを送る。
@@ -93,6 +98,17 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
 /// テキスト)を埋め込むので、受信側では動画再生も追いデコもできる
 /// 本物のページとして復元される。
 Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
+  final embedded = await buildPageSharePng(ref, page);
+  final dir = await getTemporaryDirectory();
+  final file = File('${dir.path}/culture_page_${page.id}.png');
+  await file.writeAsBytes(embedded);
+  await Share.shareXFiles([
+    XFile(file.path),
+  ], text: 'シール帳をあげる! しーるちょーの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
+}
+
+/// シール帳のメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)
+Future<Uint8List> buildPageSharePng(WidgetRef ref, StickerPage page) async {
   final db = ref.read(databaseProvider);
   final stickerRepo = ref.read(stickerRepositoryProvider);
   final profile = await ref.read(beamProfileProvider.future);
@@ -234,13 +250,7 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
     if (bgPng != null) 'bgPng': bgPng,
   };
 
-  final embedded = StickerShare.embed(flatPng, meta);
-  final dir = await getTemporaryDirectory();
-  final file = File('${dir.path}/culture_page_${page.id}.png');
-  await file.writeAsBytes(embedded);
-  await Share.shareXFiles([
-    XFile(file.path),
-  ], text: 'シール帳をあげる! しーるちょーの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
+  return StickerShare.embed(flatPng, meta);
 }
 
 /// ギャラリーの画像からシール/ページを取り込む(共有シートで受け取ったPNG)。
@@ -324,16 +334,26 @@ Future<void> importStickerFromGallery(
   if (file == null || !context.mounted) return;
 
   final bytes = await file.readAsBytes();
-  final meta = StickerShare.extract(bytes);
+  final message = await importSharedPngBytes(ref, bytes);
   if (!context.mounted) return;
-
-  if (meta == null ||
-      (meta['kind'] != 'culturetune_sticker' &&
-          meta['kind'] != 'culturetune_page')) {
+  if (message == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('しーるちょーのシールじゃないみたい(スクショではなく元のPNGを保存してね)')),
     );
     return;
+  }
+  HapticFeedback.mediumImpact();
+  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+}
+
+/// 共有PNG(シール/シール帳)のバイト列を取り込む。
+/// ギャラリー取り込みとBLE受信で共用。戻り値: 結果メッセージ(無効ならnull)
+Future<String?> importSharedPngBytes(WidgetRef ref, Uint8List bytes) async {
+  final meta = StickerShare.extract(bytes);
+  if (meta == null ||
+      (meta['kind'] != 'culturetune_sticker' &&
+          meta['kind'] != 'culturetune_page')) {
+    return null;
   }
 
   final creatorName = meta['creatorName'] as String? ?? 'ともだち';
@@ -347,18 +367,9 @@ Future<void> importStickerFromGallery(
       creatorName: creatorName,
       creatorColor: creatorColor,
     );
-    if (!context.mounted) return;
-    HapticFeedback.mediumImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          restored
-              ? '$creatorName のシール帳を追加したよ。追いデコして送り返すと交換日記になるよ'
-              : '$creatorName のシール帳を画像として追加したよ',
-        ),
-      ),
-    );
-    return;
+    return restored
+        ? '$creatorName のシール帳を追加したよ。追いデコして送り返すと交換日記になるよ'
+        : '$creatorName のシール帳を画像として追加したよ';
   }
 
   // 単体シール
@@ -387,12 +398,7 @@ Future<void> importStickerFromGallery(
         rawIsCutout: meta['rawIsCutout'] as bool? ?? false,
         borderColorHex: meta['borderColor'] as String?,
       );
-
-  if (!context.mounted) return;
-  HapticFeedback.mediumImpact();
-  ScaffoldMessenger.of(
-    context,
-  ).showSnackBar(SnackBar(content: Text('$creatorName のシールをパレットに追加したよ')));
+  return '$creatorName のシールをパレットに追加したよ';
 }
 
 /// 埋め込みカルチャーをカードとして復元し、idを返す

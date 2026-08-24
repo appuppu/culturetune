@@ -148,10 +148,166 @@ import Vision
       }
     }
 
+    // BLE転送(シール/シール帳をその場でBluetooth送信)
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let transferChannel = FlutterMethodChannel(
+        name: "culturetune/ble_transfer",
+        binaryMessenger: controller.binaryMessenger
+      )
+      bleTransfer.onEvent = { method, args in
+        DispatchQueue.main.async {
+          transferChannel.invokeMethod(method, arguments: args)
+        }
+      }
+      transferChannel.setMethodCallHandler { [weak self] call, result in
+        switch call.method {
+        case "serve":
+          guard let args = call.arguments as? [String: Any],
+            let name = args["name"] as? String,
+            let data = args["data"] as? FlutterStandardTypedData
+          else {
+            result(FlutterMethodNotImplemented)
+            return
+          }
+          self?.bleTransfer.serve(name: name, data: data.data)
+          result(true)
+        case "stop":
+          self?.bleTransfer.stop()
+          result(true)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   private lazy var bleAdvertiser = BleAdvertiser()
+  private lazy var bleTransfer = BleTransferPeripheral()
+}
+
+/// シール/シール帳のPNGバイト列をGATT通知でストリーム送信するサーバ。
+/// META(読み取り)でサイズを伝え、CTRLへの書き込みで送信開始、
+/// DATA(通知)へチャンクを流す。
+class BleTransferPeripheral: NSObject, CBPeripheralManagerDelegate {
+  static let serviceUUID = CBUUID(string: "0000C71F-0000-1000-8000-00805F9B34FB")
+  static let metaUUID = CBUUID(string: "0000C720-0000-1000-8000-00805F9B34FB")
+  static let dataUUID = CBUUID(string: "0000C721-0000-1000-8000-00805F9B34FB")
+  static let ctrlUUID = CBUUID(string: "0000C722-0000-1000-8000-00805F9B34FB")
+
+  private var manager: CBPeripheralManager?
+  private var payload = Data()
+  private var localName = ""
+  private var dataChar: CBMutableCharacteristic?
+  private var offset = 0
+  private var streaming = false
+  private var pendingSetup = false
+  private var chunkSize = 100
+  var onEvent: ((String, Any?) -> Void)?
+
+  func serve(name: String, data: Data) {
+    payload = data
+    localName = name
+    offset = 0
+    streaming = false
+    pendingSetup = true
+    if manager == nil {
+      manager = CBPeripheralManager(delegate: self, queue: nil)
+    }
+    setupIfReady()
+  }
+
+  func stop() {
+    streaming = false
+    pendingSetup = false
+    payload = Data()
+    manager?.stopAdvertising()
+    manager?.removeAllServices()
+  }
+
+  private func setupIfReady() {
+    guard let manager, manager.state == .poweredOn, pendingSetup else {
+      if let manager, manager.state != .poweredOn, manager.state != .unknown, manager.state != .resetting {
+        onEvent?("serveError", "bluetooth state=\(manager.state.rawValue)")
+      }
+      return
+    }
+    pendingSetup = false
+    manager.stopAdvertising()
+    manager.removeAllServices()
+
+    let metaJson = "{\"size\":\(payload.count),\"name\":\"\(localName)\"}"
+    let metaChar = CBMutableCharacteristic(
+      type: Self.metaUUID, properties: [.read],
+      value: metaJson.data(using: .utf8), permissions: [.readable])
+    let dChar = CBMutableCharacteristic(
+      type: Self.dataUUID, properties: [.notify], value: nil, permissions: [])
+    let cChar = CBMutableCharacteristic(
+      type: Self.ctrlUUID, properties: [.write, .writeWithoutResponse],
+      value: nil, permissions: [.writeable])
+    dataChar = dChar
+
+    let service = CBMutableService(type: Self.serviceUUID, primary: true)
+    service.characteristics = [metaChar, dChar, cChar]
+    manager.add(service)
+    manager.startAdvertising([
+      CBAdvertisementDataServiceUUIDsKey: [Self.serviceUUID],
+      CBAdvertisementDataLocalNameKey: localName,
+    ])
+    onEvent?("serveReady", nil)
+  }
+
+  func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+    setupIfReady()
+  }
+
+  func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
+    if let error {
+      onEvent?("serveError", error.localizedDescription)
+    } else {
+      onEvent?("serveAdvertising", nil)
+    }
+  }
+
+  func peripheralManager(
+    _ peripheral: CBPeripheralManager, central: CBCentral,
+    didSubscribeTo characteristic: CBMutableCharacteristic
+  ) {
+    chunkSize = max(20, central.maximumUpdateValueLength)
+    onEvent?("peerSubscribed", nil)
+  }
+
+  func peripheralManager(_ peripheral: CBPeripheralManager, didReceiveWrite requests: [CBATTRequest]) {
+    for request in requests where request.characteristic.uuid == Self.ctrlUUID {
+      peripheral.respond(to: request, withResult: .success)
+      offset = 0
+      streaming = true
+      pump()
+    }
+  }
+
+  private func pump() {
+    guard streaming, let manager, let dataChar else { return }
+    while offset < payload.count {
+      let end = min(offset + chunkSize, payload.count)
+      let chunk = payload.subdata(in: offset..<end)
+      if manager.updateValue(chunk, for: dataChar, onSubscribedCentrals: nil) {
+        offset = end
+        if offset % (chunkSize * 50) < chunkSize || offset == payload.count {
+          onEvent?("sendProgress", ["sent": offset, "total": payload.count])
+        }
+      } else {
+        return  // キューが空くとisReadyで再開される
+      }
+    }
+    streaming = false
+    onEvent?("sendDone", nil)
+  }
+
+  func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
+    pump()
+  }
 }
 
 /// CBPeripheralManagerがpoweredOnになるのを待ってからアドバタイズする

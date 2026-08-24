@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,14 +10,13 @@ import 'package:image_picker/image_picker.dart';
 import '../../app/providers.dart';
 import '../../core/beam/beam_transport.dart';
 import '../../core/beam/ble_presence.dart';
-import '../../core/db/app_database.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
-import '../book/pages_page.dart';
 import '../palette/sticker_exchange.dart';
 import 'beam_profile_provider.dart';
 import 'qr_exchange.dart';
+import 'send_pickers.dart';
 
 final beamTransportProvider = Provider<BlePresenceTransport>((ref) {
   final transport = BlePresenceTransport();
@@ -77,119 +75,9 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     }
   }
 
-  /// パレットからシールを選んで共有シートで送る
-  Future<void> _pickStickerToSend() async {
-    final db = ref.read(databaseProvider);
-    final stickers = await db.watchStickers().first;
-    if (!mounted) return;
-    if (stickers.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('まずシールタブでシールをつくってね')));
-      return;
-    }
-    final repo = ref.read(stickerRepositoryProvider);
-    final selected = await showModalBottomSheet<Sticker>(
-      context: context,
-      backgroundColor: CTColors.bgBase,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(CTRadius.sheet),
-        ),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: SizedBox(
-          height: 320,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-            ),
-            itemCount: stickers.length,
-            itemBuilder: (_, i) => GestureDetector(
-              onTap: () => Navigator.pop(sheetContext, stickers[i]),
-              child: Container(
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: CTColors.surface,
-                  borderRadius: BorderRadius.circular(CTRadius.card),
-                ),
-                child: Image.file(
-                  File(repo.resolve(stickers[i].imagePath)),
-                  fit: BoxFit.contain,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-    if (selected == null || !mounted) return;
-    await shareStickerWithMeta(ref, selected);
-  }
+  Future<void> _pickStickerToSend() => pickAndSendSticker(context, ref);
 
-  /// シール帳のページを選んで共有シートで送る
-  Future<void> _pickPageToSend() async {
-    final db = ref.read(databaseProvider);
-    final pages = await db.watchPages().first;
-    if (!mounted) return;
-    if (pages.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('まずシール帳をつくってね')));
-      return;
-    }
-    // シール帳の中身を見て選べるプレビューグリッド
-    final selected = await showModalBottomSheet<StickerPage>(
-      context: context,
-      backgroundColor: CTColors.bgBase,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(CTRadius.sheet),
-        ),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: SizedBox(
-          height: MediaQuery.of(sheetContext).size.height * 0.72,
-          child: Column(
-            children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'どのシール帳を送る?',
-                  style: TextStyle(fontWeight: FontWeight.w800),
-                ),
-              ),
-              Expanded(
-                child: GridView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 9 / 16,
-                  ),
-                  itemCount: pages.length,
-                  itemBuilder: (_, i) => GestureDetector(
-                    onTap: () => Navigator.pop(sheetContext, pages[i]),
-                    child: PageCanvas(page: pages[i]),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (selected == null || !mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('シール帳を画像にしてるよ…')));
-    await sharePageWithMeta(ref, selected);
-  }
+  Future<void> _pickPageToSend() => pickAndSendPage(context, ref);
 
   void _editProfile() {
     final profile = ref.read(beamProfileProvider).valueOrNull;
@@ -504,10 +392,12 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                 children: [
                   FilledButton.tonalIcon(
                     onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const QrExchangePage()),
+                      MaterialPageRoute(
+                        builder: (_) => const SpotExchangePage(),
+                      ),
                     ),
-                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
-                    label: const Text('QRでその場交換(カード)'),
+                    icon: const Icon(Icons.bluetooth_rounded, size: 18),
+                    label: const Text('その場で交換(Bluetooth / QR)'),
                   ),
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
