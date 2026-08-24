@@ -95,3 +95,6 @@ flutter_launcher_icons:
 
 flutter:
   uses-material-design: true
+  assets:
+    # ページ背景のプリセット。ここに画像を足すと背景選択に自動で並ぶ
+    - assets/backgrounds/

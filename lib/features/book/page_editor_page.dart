@@ -444,6 +444,44 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                     ),
                 ],
               ),
+              const SizedBox(height: 14),
+              Text(
+                'きせかえ',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                  color: CTColors.textSub,
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 96,
+                child: FutureBuilder(
+                  future: _presetBackgrounds(),
+                  builder: (context, snapshot) {
+                    final presets = snapshot.data ?? const <String>[];
+                    if (presets.isEmpty) return const SizedBox.shrink();
+                    return ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: presets.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) => GestureDetector(
+                        onTap: () =>
+                            Navigator.pop(sheetContext, 'asset:${presets[i]}'),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.asset(
+                            presets[i],
+                            width: 54,
+                            height: 96,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
               const SizedBox(height: 8),
               const Divider(),
               ListTile(
@@ -481,8 +519,43 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
       }
       return;
     }
+    if (action.startsWith('asset:')) {
+      await _applyPresetBackground(action.substring(6));
+      return;
+    }
     // 写真から選ぶ → 9:16にクロップして背景に
     await _pickBackgroundPhoto();
+  }
+
+  /// assets/backgrounds/ 内の画像を列挙(足せば自動で選択肢に増える)
+  Future<List<String>> _presetBackgrounds() async {
+    final manifest = await AssetManifest.loadFromAssetBundle(rootBundle);
+    return manifest
+        .listAssets()
+        .where((a) => a.startsWith('assets/backgrounds/'))
+        .toList()
+      ..sort();
+  }
+
+  /// プリセット背景を選択: ページ専用にコピーして通常の背景写真として扱う
+  /// (交換・書き出し・バックアップが既存の仕組みのまま動く)
+  Future<void> _applyPresetBackground(String assetKey) async {
+    final bytes = await rootBundle.load(assetKey);
+    if (!mounted) return;
+    final docs = ref.read(documentsDirProvider);
+    final bgDir = Directory('${docs.path}/pages_bg');
+    if (!bgDir.existsSync()) bgDir.createSync(recursive: true);
+    final dest = File(
+      '${bgDir.path}/${widget.page.id}_${DateTime.now().millisecondsSinceEpoch}.png',
+    );
+    await dest.writeAsBytes(bytes.buffer.asUint8List());
+    final oldPath = _bgImagePath;
+    setState(() => _bgImagePath = dest.path);
+    await _persistPage();
+    if (oldPath != null && oldPath != dest.path) {
+      final old = File(oldPath);
+      if (await old.exists()) await old.delete();
+    }
   }
 
   Future<void> _pickBackgroundPhoto() async {
