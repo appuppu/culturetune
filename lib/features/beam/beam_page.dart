@@ -15,8 +15,9 @@ import '../../core/db/app_database.dart';
 import '../../core/models/culture_category.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/label_chip.dart';
-import 'beam_profile_provider.dart';
+import '../book/pages_page.dart';
 import '../palette/sticker_exchange.dart';
+import 'beam_profile_provider.dart';
 
 final beamTransportProvider = Provider<BlePresenceTransport>((ref) {
   final transport = BlePresenceTransport();
@@ -139,9 +140,11 @@ class _BeamPageState extends ConsumerState<BeamPage> {
       ).showSnackBar(const SnackBar(content: Text('まずシール帳をつくってね')));
       return;
     }
+    // シール帳の中身を見て選べるプレビューグリッド
     final selected = await showModalBottomSheet<StickerPage>(
       context: context,
       backgroundColor: CTColors.bgBase,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(CTRadius.sheet),
@@ -149,22 +152,33 @@ class _BeamPageState extends ConsumerState<BeamPage> {
       ),
       builder: (sheetContext) => SafeArea(
         child: SizedBox(
-          height: 320,
-          child: ListView.builder(
-            itemCount: pages.length,
-            itemBuilder: (_, i) {
-              final page = pages[i];
-              return ListTile(
-                leading: const Icon(Icons.menu_book_rounded),
-                title: Text(
-                  page.title.isEmpty
-                      ? '${page.updatedAt.month}/${page.updatedAt.day}のシール帳'
-                      : page.title,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+          height: MediaQuery.of(sheetContext).size.height * 0.72,
+          child: Column(
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'どのシール帳を送る?',
+                  style: TextStyle(fontWeight: FontWeight.w800),
                 ),
-                onTap: () => Navigator.pop(sheetContext, page),
-              );
-            },
+              ),
+              Expanded(
+                child: GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 9 / 16,
+                  ),
+                  itemCount: pages.length,
+                  itemBuilder: (_, i) => GestureDetector(
+                    onTap: () => Navigator.pop(sheetContext, pages[i]),
+                    child: PageCanvas(page: pages[i]),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -366,13 +380,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     final profile = ref.watch(beamProfileProvider).valueOrNull;
 
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFFFFF0F6), Color(0xFFEDF9FF)],
-        ),
-      ),
+      color: CTColors.bgBase,
       child: SafeArea(
         child: Column(
           children: [
@@ -381,7 +389,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
               child: Row(
                 children: [
                   Text(
-                    'カード交換',
+                    '交換',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
@@ -389,11 +397,6 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                     ),
                   ),
                   const Spacer(),
-                  LabelChip(
-                    icon: Icons.download_rounded,
-                    label: '受け取る',
-                    onTap: () => importStickerFromGallery(context, ref),
-                  ),
                   LabelChip(
                     icon: Icons.history_rounded,
                     label: '履歴',
@@ -478,7 +481,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                     child: FilledButton.icon(
                       style: FilledButton.styleFrom(
                         backgroundColor: CTColors.mint,
-                        foregroundColor: CTColors.textMain,
+                        foregroundColor: CTColors.onAccent(CTColors.mint),
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       onPressed: () {
@@ -488,6 +491,26 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                       icon: const Icon(Icons.menu_book_rounded, size: 18),
                       label: const Text('シール帳を送る'),
                     ),
+                  ),
+                ],
+              ),
+            ),
+            // 受け取り: LINE等で届いたPNGをここから読み込む
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => importStickerFromGallery(context, ref),
+                    icon: const Icon(Icons.download_rounded, size: 18),
+                    label: const Text('もらったシール/シール帳を取り込む'),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'LINEなどで届いた画像を選ぶと、自分のパレット/シール帳に追加されるよ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 10, color: CTColors.textSub),
                   ),
                 ],
               ),

@@ -235,6 +235,11 @@ abstract final class CTColors {
   static Color get peach => current.peach;
   static Color get soda => current.soda;
   static List<Color> get moodPalette => current.mood;
+
+  /// アクセント色の上に載せる文字色。
+  /// 明るい色には濃色、暗い色には白(ダークテーマでの視認性対策)
+  static Color onAccent(Color bg) =>
+      bg.computeLuminance() > 0.5 ? const Color(0xFF1B1D22) : Colors.white;
 }
 
 abstract final class CTRadius {

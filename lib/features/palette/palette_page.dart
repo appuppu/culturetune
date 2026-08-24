@@ -296,7 +296,7 @@ Future<void> showStickerSheet(
                 builder: (context, sheetRef, _) => FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: CTColors.mint,
-                    foregroundColor: CTColors.textMain,
+                    foregroundColor: CTColors.onAccent(CTColors.mint),
                   ),
                   onPressed: () =>
                       playVoice(sheetRef, repo.resolve(sticker.audioPath!)),
