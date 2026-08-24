@@ -397,107 +397,117 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
     final action = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: CTColors.bgBase,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(CTRadius.sheet),
         ),
       ),
       builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '背景色',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  color: CTColors.textSub,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetContext).size.height * 0.85,
+          ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '背景色',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: CTColors.textSub,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  for (final color in [
-                    Colors.white,
-                    const Color(0xFF1B1D22),
-                    ...CTColors.moodPalette,
-                  ])
-                    GestureDetector(
-                      onTap: () =>
-                          Navigator.pop(sheetContext, 'color:${_hexOf(color)}'),
-                      child: Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: CTColors.textSub.withValues(alpha: 0.3),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final color in [
+                      Colors.white,
+                      const Color(0xFF1B1D22),
+                      ...CTColors.moodPalette,
+                    ])
+                      GestureDetector(
+                        onTap: () => Navigator.pop(
+                          sheetContext,
+                          'color:${_hexOf(color)}',
+                        ),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: CTColors.textSub.withValues(alpha: 0.3),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                'きせかえ',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 13,
-                  color: CTColors.textSub,
+                  ],
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                height: 96,
-                child: FutureBuilder(
+                const SizedBox(height: 8),
+                const Divider(),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.photo_library_rounded),
+                  title: const Text('写真から選ぶ(シール帳サイズに切り取り)'),
+                  onTap: () => Navigator.pop(sheetContext, 'photo'),
+                ),
+                if (_bgImagePath != null)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.hide_image_rounded),
+                    title: const Text('背景写真を外す'),
+                    onTap: () => Navigator.pop(sheetContext, 'remove'),
+                  ),
+                const Divider(),
+                const SizedBox(height: 6),
+                Text(
+                  'きせかえ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: CTColors.textSub,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                FutureBuilder(
                   future: _presetBackgrounds(),
                   builder: (context, snapshot) {
                     final presets = snapshot.data ?? const <String>[];
                     if (presets.isEmpty) return const SizedBox.shrink();
-                    return ListView.separated(
-                      scrollDirection: Axis.horizontal,
+                    return GridView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            mainAxisSpacing: 8,
+                            crossAxisSpacing: 8,
+                            childAspectRatio: 9 / 16,
+                          ),
                       itemCount: presets.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 8),
                       itemBuilder: (_, i) => GestureDetector(
-                        onTap: () =>
-                            Navigator.pop(sheetContext, 'asset:${presets[i]}'),
+                        onTap: () => Navigator.pop(
+                          sheetContext,
+                          'asset:${presets[i]}',
+                        ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(
-                            presets[i],
-                            width: 54,
-                            height: 96,
-                            fit: BoxFit.cover,
-                          ),
+                          child: Image.asset(presets[i], fit: BoxFit.cover),
                         ),
                       ),
                     );
                   },
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Divider(),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.photo_library_rounded),
-                title: const Text('写真から選ぶ(シール帳サイズに切り取り)'),
-                onTap: () => Navigator.pop(sheetContext, 'photo'),
-              ),
-              if (_bgImagePath != null)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.hide_image_rounded),
-                  title: const Text('背景写真を外す'),
-                  onTap: () => Navigator.pop(sheetContext, 'remove'),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
