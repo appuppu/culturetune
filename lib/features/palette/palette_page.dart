@@ -46,7 +46,7 @@ class PaletteBody extends ConsumerWidget {
         content: Text(
           usedCount == 0
               ? 'シール帳には貼っていないシールだよ'
-              : 'うち$usedCount個はシール帳に貼ってあるよ(はがれて消えるよ)',
+              : 'うち$usedCount個はシール帳に貼ってあるけど、シール帳の分はそのまま残るよ',
         ),
         actions: [
           TextButton(

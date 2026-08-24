@@ -57,6 +57,9 @@ class Stickers extends Table {
   BoolColumn get rawIsCutout =>
       boolean().withDefault(const Constant(false))(); // 素材が切り抜き済みか
   TextColumn get borderColor => text().nullable()(); // 現在のフチ色(hex)
+  BoolColumn get archived => boolean().withDefault(
+    const Constant(false),
+  )(); // パレットから削除済みだがシール帳で使用中(全ページからはがれたら完全削除)
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -120,7 +123,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -149,6 +152,9 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 9) {
         await m.addColumn(beams, beams.pageId);
+      }
+      if (from < 10 && from >= 3) {
+        await m.addColumn(stickers, stickers.archived);
       }
       if (from < 4) {
         await m.createTable(pageElements);
@@ -215,9 +221,35 @@ class AppDatabase extends _$AppDatabase {
 
   // ---- シール ----
 
-  Stream<List<Sticker>> watchStickers() => (select(
-    stickers,
-  )..orderBy([(t) => OrderingTerm.desc(t.createdAt)])).watch();
+  Stream<List<Sticker>> watchStickers() =>
+      (select(stickers)
+            ..where((t) => t.archived.equals(false))
+            ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+          .watch();
+
+  /// シール帳(ページ要素)から参照されている数
+  Future<int> countStickerUse(String id) async {
+    final countExp = pageElements.id.count();
+    final row =
+        await (selectOnly(pageElements)
+              ..addColumns([countExp])
+              ..where(
+                pageElements.refId.equals(id) &
+                    pageElements.type.equalsValue(PageElementType.sticker),
+              ))
+            .getSingle();
+    return row.read(countExp) ?? 0;
+  }
+
+  /// パレットから消す(シール帳で使用中のため実体は残す)
+  Future<void> archiveSticker(String id) =>
+      (update(stickers)..where((t) => t.id.equals(id))).write(
+        const StickersCompanion(archived: Value(true)),
+      );
+
+  /// アーカイブ済みシール一覧(全ページからはがれたものの掃除用)
+  Future<List<Sticker>> archivedStickers() =>
+      (select(stickers)..where((t) => t.archived.equals(true))).get();
 
   Future<Sticker?> findSticker(String id) =>
       (select(stickers)..where((t) => t.id.equals(id))).getSingleOrNull();

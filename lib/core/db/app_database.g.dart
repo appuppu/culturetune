@@ -1842,6 +1842,21 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1866,6 +1881,7 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
     rawPath,
     rawIsCutout,
     borderColor,
+    archived,
     createdAt,
   ];
   @override
@@ -1952,6 +1968,12 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
         ),
       );
     }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2017,6 +2039,10 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
         DriftSqlType.string,
         data['${effectivePrefix}border_color'],
       ),
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2047,6 +2073,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
   final String? rawPath;
   final bool rawIsCutout;
   final String? borderColor;
+  final bool archived;
   final DateTime createdAt;
   const Sticker({
     required this.id,
@@ -2060,6 +2087,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     this.rawPath,
     required this.rawIsCutout,
     this.borderColor,
+    required this.archived,
     required this.createdAt,
   });
   @override
@@ -2094,6 +2122,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     if (!nullToAbsent || borderColor != null) {
       map['border_color'] = Variable<String>(borderColor);
     }
+    map['archived'] = Variable<bool>(archived);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -2121,6 +2150,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       borderColor: borderColor == null && nullToAbsent
           ? const Value.absent()
           : Value(borderColor),
+      archived: Value(archived),
       createdAt: Value(createdAt),
     );
   }
@@ -2146,6 +2176,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       rawPath: serializer.fromJson<String?>(json['rawPath']),
       rawIsCutout: serializer.fromJson<bool>(json['rawIsCutout']),
       borderColor: serializer.fromJson<String?>(json['borderColor']),
+      archived: serializer.fromJson<bool>(json['archived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2168,6 +2199,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       'rawPath': serializer.toJson<String?>(rawPath),
       'rawIsCutout': serializer.toJson<bool>(rawIsCutout),
       'borderColor': serializer.toJson<String?>(borderColor),
+      'archived': serializer.toJson<bool>(archived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2184,6 +2216,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     Value<String?> rawPath = const Value.absent(),
     bool? rawIsCutout,
     Value<String?> borderColor = const Value.absent(),
+    bool? archived,
     DateTime? createdAt,
   }) => Sticker(
     id: id ?? this.id,
@@ -2197,6 +2230,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     rawPath: rawPath.present ? rawPath.value : this.rawPath,
     rawIsCutout: rawIsCutout ?? this.rawIsCutout,
     borderColor: borderColor.present ? borderColor.value : this.borderColor,
+    archived: archived ?? this.archived,
     createdAt: createdAt ?? this.createdAt,
   );
   Sticker copyWithCompanion(StickersCompanion data) {
@@ -2222,6 +2256,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       borderColor: data.borderColor.present
           ? data.borderColor.value
           : this.borderColor,
+      archived: data.archived.present ? data.archived.value : this.archived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2240,6 +2275,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
           ..write('rawPath: $rawPath, ')
           ..write('rawIsCutout: $rawIsCutout, ')
           ..write('borderColor: $borderColor, ')
+          ..write('archived: $archived, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2258,6 +2294,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     rawPath,
     rawIsCutout,
     borderColor,
+    archived,
     createdAt,
   );
   @override
@@ -2275,6 +2312,7 @@ class Sticker extends DataClass implements Insertable<Sticker> {
           other.rawPath == this.rawPath &&
           other.rawIsCutout == this.rawIsCutout &&
           other.borderColor == this.borderColor &&
+          other.archived == this.archived &&
           other.createdAt == this.createdAt);
 }
 
@@ -2290,6 +2328,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
   final Value<String?> rawPath;
   final Value<bool> rawIsCutout;
   final Value<String?> borderColor;
+  final Value<bool> archived;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const StickersCompanion({
@@ -2304,6 +2343,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     this.rawPath = const Value.absent(),
     this.rawIsCutout = const Value.absent(),
     this.borderColor = const Value.absent(),
+    this.archived = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2319,6 +2359,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     this.rawPath = const Value.absent(),
     this.rawIsCutout = const Value.absent(),
     this.borderColor = const Value.absent(),
+    this.archived = const Value.absent(),
     required DateTime createdAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -2337,6 +2378,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     Expression<String>? rawPath,
     Expression<bool>? rawIsCutout,
     Expression<String>? borderColor,
+    Expression<bool>? archived,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -2352,6 +2394,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
       if (rawPath != null) 'raw_path': rawPath,
       if (rawIsCutout != null) 'raw_is_cutout': rawIsCutout,
       if (borderColor != null) 'border_color': borderColor,
+      if (archived != null) 'archived': archived,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2369,6 +2412,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     Value<String?>? rawPath,
     Value<bool>? rawIsCutout,
     Value<String?>? borderColor,
+    Value<bool>? archived,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -2384,6 +2428,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
       rawPath: rawPath ?? this.rawPath,
       rawIsCutout: rawIsCutout ?? this.rawIsCutout,
       borderColor: borderColor ?? this.borderColor,
+      archived: archived ?? this.archived,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2429,6 +2474,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     if (borderColor.present) {
       map['border_color'] = Variable<String>(borderColor.value);
     }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2452,6 +2500,7 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
           ..write('rawPath: $rawPath, ')
           ..write('rawIsCutout: $rawIsCutout, ')
           ..write('borderColor: $borderColor, ')
+          ..write('archived: $archived, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4378,6 +4427,7 @@ typedef $$StickersTableCreateCompanionBuilder =
       Value<String?> rawPath,
       Value<bool> rawIsCutout,
       Value<String?> borderColor,
+      Value<bool> archived,
       required DateTime createdAt,
       Value<int> rowid,
     });
@@ -4394,6 +4444,7 @@ typedef $$StickersTableUpdateCompanionBuilder =
       Value<String?> rawPath,
       Value<bool> rawIsCutout,
       Value<String?> borderColor,
+      Value<bool> archived,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -4461,6 +4512,11 @@ class $$StickersTableFilterComposer
 
   ColumnFilters<String> get borderColor => $composableBuilder(
     column: $table.borderColor,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4534,6 +4590,11 @@ class $$StickersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4592,6 +4653,9 @@ class $$StickersTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -4635,6 +4699,7 @@ class $$StickersTableTableManager
                 Value<String?> rawPath = const Value.absent(),
                 Value<bool> rawIsCutout = const Value.absent(),
                 Value<String?> borderColor = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => StickersCompanion(
@@ -4649,6 +4714,7 @@ class $$StickersTableTableManager
                 rawPath: rawPath,
                 rawIsCutout: rawIsCutout,
                 borderColor: borderColor,
+                archived: archived,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -4665,6 +4731,7 @@ class $$StickersTableTableManager
                 Value<String?> rawPath = const Value.absent(),
                 Value<bool> rawIsCutout = const Value.absent(),
                 Value<String?> borderColor = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => StickersCompanion.insert(
@@ -4679,6 +4746,7 @@ class $$StickersTableTableManager
                 rawPath: rawPath,
                 rawIsCutout: rawIsCutout,
                 borderColor: borderColor,
+                archived: archived,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

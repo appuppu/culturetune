@@ -99,6 +99,7 @@ Future<String?> exportBookBackup(WidgetRef ref) async {
       'rawPath': s.rawPath,
       'rawIsCutout': s.rawIsCutout,
       'borderColor': s.borderColor,
+      'archived': s.archived,
       'createdAt': _iso(s.createdAt),
     });
   }
@@ -319,6 +320,7 @@ Future<String> importBookBackup(WidgetRef ref) async {
             rawPath: drift.Value(raw['rawPath'] as String?),
             rawIsCutout: drift.Value(raw['rawIsCutout'] as bool? ?? false),
             borderColor: drift.Value(raw['borderColor'] as String?),
+            archived: drift.Value(raw['archived'] as bool? ?? false),
             createdAt: _dt(raw['createdAt']),
           ),
         );

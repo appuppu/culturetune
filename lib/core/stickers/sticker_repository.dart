@@ -162,12 +162,33 @@ class StickerRepository {
     return true;
   }
 
+  /// シールを削除する。シール帳に貼ってある場合は実体を残して
+  /// パレットから隠すだけ(貼った作品を壊さない)。
+  /// 全ページからはがれた時点でcleanupArchivedが完全削除する。
   Future<void> deleteSticker(Sticker sticker) async {
+    final used = await _db.countStickerUse(sticker.id);
+    if (used > 0) {
+      await _db.archiveSticker(sticker.id);
+      return;
+    }
+    await _hardDelete(sticker);
+  }
+
+  Future<void> _hardDelete(Sticker sticker) async {
     await _db.deleteSticker(sticker.id);
     for (final rel in [sticker.imagePath, sticker.audioPath, sticker.rawPath]) {
       if (rel == null) continue;
       final file = File(resolve(rel));
       if (await file.exists()) await file.delete();
+    }
+  }
+
+  /// アーカイブ済みで、もうどのシール帳にも貼られていないシールを掃除する
+  Future<void> cleanupArchived() async {
+    for (final sticker in await _db.archivedStickers()) {
+      if (await _db.countStickerUse(sticker.id) == 0) {
+        await _hardDelete(sticker);
+      }
     }
   }
 }

@@ -146,6 +146,7 @@ class _PageGrid extends ConsumerWidget {
     );
     if (ok == true && context.mounted) {
       await ref.read(databaseProvider).deletePage(page.id);
+      await ref.read(stickerRepositoryProvider).cleanupArchived();
     }
   }
 
@@ -332,6 +333,7 @@ class _PagePagerState extends ConsumerState<_PagePager> {
     );
     if (ok == true && mounted) {
       await ref.read(databaseProvider).deletePage(page.id);
+      await ref.read(stickerRepositoryProvider).cleanupArchived();
     }
   }
 
