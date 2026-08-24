@@ -7,14 +7,12 @@ import 'package:uuid/uuid.dart';
 
 import 'package:gal/gal.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../app/providers.dart';
 import '../../core/files/doc_paths.dart';
 import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/stickers/page_renderer.dart';
-import '../palette/sticker_exchange.dart';
 import '../beam/exchange_history.dart';
 import 'element_view.dart';
 import 'page_editor_page.dart';
@@ -328,14 +326,15 @@ class _PagePagerState extends ConsumerState<_PagePager> {
                         onLongPress: () => _confirmDelete(page),
                         child: PageCanvas(page: page, interactive: true),
                       ),
-                      // 共有(送る/画像化)
+                      // カメラロールに保存
                       Positioned(
                         right: 8,
                         bottom: 56,
                         child: Consumer(
                           builder: (context, ref, _) => _RoundIconButton(
-                            icon: Icons.ios_share_rounded,
-                            onTap: () => sharePageFromList(context, ref, page),
+                            icon: Icons.save_alt_rounded,
+                            onTap: () =>
+                                savePageToCameraRoll(context, ref, page),
                           ),
                         ),
                       ),
@@ -450,62 +449,15 @@ Future<void> createNewPage(BuildContext context, WidgetRef ref) async {
 
 /// ページの描画(ページャー・一覧グリッド共通)。
 /// interactive=trueなら要素タップでその場再生。
-/// シール帳の共有: ともだちに送る(データ入り) / 画像として共有
-Future<void> sharePageFromList(
+/// シール帳を画像にしてカメラロールへ保存する
+Future<void> savePageToCameraRoll(
   BuildContext context,
   WidgetRef ref,
   StickerPage page,
 ) async {
-  final action = await showModalBottomSheet<String>(
-    context: context,
-    backgroundColor: CTColors.bgBase,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
-    ),
-    builder: (sheetContext) => SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.favorite_rounded),
-            title: const Text('ともだちに送る'),
-            subtitle: const Text(
-              'しーるちょー同士の交換用。音楽や地図も動くデータ入り画像で届くよ',
-              style: TextStyle(fontSize: 12),
-            ),
-            onTap: () => Navigator.pop(sheetContext, 'meta'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.save_alt_rounded),
-            title: const Text('カメラロールに保存'),
-            subtitle: const Text(
-              'インスタのストーリーなどに使える画像(データなし)',
-              style: TextStyle(fontSize: 12),
-            ),
-            onTap: () => Navigator.pop(sheetContext, 'save'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.ios_share_rounded),
-            title: const Text('画像を共有'),
-            subtitle: const Text(
-              '共有シートからアプリを選んで送る',
-              style: TextStyle(fontSize: 12),
-            ),
-            onTap: () => Navigator.pop(sheetContext, 'flat'),
-          ),
-        ],
-      ),
-    ),
-  );
-  if (action == null || !context.mounted) return;
-
   ScaffoldMessenger.of(
     context,
   ).showSnackBar(const SnackBar(content: Text('シール帳を画像にしてるよ…')));
-  if (action == 'meta') {
-    await sharePageWithMeta(ref, page);
-    return;
-  }
   final png = await renderPageToPng(
     docs: ref.read(documentsDirProvider),
     db: ref.read(databaseProvider),
@@ -516,24 +468,21 @@ Future<void> sharePageFromList(
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/book_${page.id}.png');
   await file.writeAsBytes(png);
-  if (action == 'save') {
-    try {
-      await Gal.putImage(file.path);
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('カメラロールに保存したよ')));
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('保存できなかった…写真へのアクセスを許可してね($e)')));
-      }
+  if (!context.mounted) return;
+  try {
+    await Gal.putImage(file.path);
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('カメラロールに保存したよ')));
     }
-    return;
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存できなかった…写真へのアクセスを許可してね($e)')));
+    }
   }
-  await Share.shareXFiles([XFile(file.path)]);
 }
 
 /// ページタイトル: レトロポップな二層文字(白文字+アクセント色の落ち影)

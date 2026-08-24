@@ -50,6 +50,8 @@
 			</array>
 		</dict>
 	</array>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>シールにボイスを録音するために使います</string>
 	<key>NSCameraUsageDescription</key>
