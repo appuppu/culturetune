@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../app/providers.dart';
 import '../../core/files/doc_paths.dart';
+import '../../core/models/mood_color.dart';
 import '../../core/models/page_element_type.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/sticker_image.dart';
@@ -73,6 +74,7 @@ class ElementView extends ConsumerWidget {
         );
       case PageElementType.card:
         final item = resolved.item!;
+        final frameColor = moodColorOf(item);
         final w = canvasWidth * 0.4 * el.scale;
         // ネスト角丸: inner = outer - gap
         final outer = w * 0.09;
@@ -81,7 +83,7 @@ class ElementView extends ConsumerWidget {
           decoration: BoxDecoration(
             color: CTColors.surface,
             borderRadius: BorderRadius.circular(outer),
-            border: Border.all(color: item.category.color, width: w * 0.016),
+            border: Border.all(color: frameColor, width: w * 0.016),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.18),
@@ -109,11 +111,7 @@ class ElementView extends ConsumerWidget {
                 padding: EdgeInsets.all(w * 0.055),
                 child: Row(
                   children: [
-                    Icon(
-                      item.category.icon,
-                      size: w * 0.09,
-                      color: item.category.color,
-                    ),
+                    Icon(item.category.icon, size: w * 0.09, color: frameColor),
                     SizedBox(width: w * 0.03),
                     Expanded(
                       child: Text(

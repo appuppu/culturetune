@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -88,8 +89,11 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       });
     }
 
+    // YouTubeのデベロッパーポリシー準拠:
+    // 埋め込みプレイヤーは200x200px以上で、動画を隠さず表示する。
+    // 全幅16:9で出し、高さは最低200pxを保証する(足りない端末は上下黒帯)。
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       decoration: BoxDecoration(
         color: CTColors.surface,
         borderRadius: BorderRadius.circular(CTRadius.card),
@@ -97,74 +101,69 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         boxShadow: ctCardShadow,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          // WebViewはClipRRectが効かない環境があるため、
-          // カードの内側に余白を取ってsaveLayerで確実にクロップする
-          Padding(
-            padding: const EdgeInsets.all(6),
-            child: ClipRRect(
-              clipBehavior: Clip.antiAliasWithSaveLayer,
-              borderRadius: BorderRadius.circular(
-                CTRadius.inner(CTRadius.card, 6),
-              ),
-              child: SizedBox(
-                width: 116,
-                height: 65,
-                child: YoutubePlayer(
-                  controller: _controller!,
-                  aspectRatio: 16 / 9,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final h = math.max(200.0, w * 9 / 16);
+              // WebViewはClipRRectが効かない環境があるため
+              // saveLayerで確実にクロップする
+              return ClipRRect(
+                clipBehavior: Clip.antiAliasWithSaveLayer,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(CTRadius.inner(CTRadius.card, 2)),
                 ),
-              ),
-            ),
+                child: SizedBox(
+                  width: w,
+                  height: h,
+                  child: ColoredBox(
+                    color: Colors.black,
+                    child: YoutubePlayer(
+                      controller: _controller!,
+                      aspectRatio: 16 / 9,
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              // maxのままだとオーバーレイ配置で画面いっぱいに縦伸びする
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.music_note_rounded,
-                      size: 14,
-                      color: CTColors.primary,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        track.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${mix.index + 1}/${mix.queue.length}  ${track.subtitle ?? ''}',
+          Row(
+            children: [
+              const SizedBox(width: 12),
+              Icon(Icons.music_note_rounded, size: 14, color: CTColors.primary),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  '${track.title}  ${track.subtitle ?? ''}',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, color: CTColors.textSub),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
                 ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.skip_next_rounded),
-            color: CTColors.primary,
-            onPressed: () => ref.read(mixControllerProvider.notifier).next(),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close_rounded),
-            color: CTColors.textSub,
-            onPressed: () => ref.read(mixControllerProvider.notifier).stop(),
+              ),
+              Text(
+                '${mix.index + 1}/${mix.queue.length}',
+                style: TextStyle(fontSize: 10, color: CTColors.textSub),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.skip_next_rounded),
+                color: CTColors.primary,
+                onPressed: () =>
+                    ref.read(mixControllerProvider.notifier).next(),
+              ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close_rounded),
+                color: CTColors.textSub,
+                onPressed: () =>
+                    ref.read(mixControllerProvider.notifier).stop(),
+              ),
+            ],
           ),
         ],
       ),

@@ -9,6 +9,7 @@ import '../../features/book/page_models.dart';
 import '../data/item_repository.dart';
 import '../files/doc_paths.dart';
 import '../db/app_database.dart';
+import '../models/mood_color.dart';
 import '../models/page_element_type.dart';
 import 'sticker_repository.dart';
 
@@ -198,7 +199,7 @@ Future<void> _drawCard(
   } else {
     canvas.drawRect(
       thumbRect,
-      Paint()..color = item.category.color.withValues(alpha: 0.2),
+      Paint()..color = moodColorOf(item).withValues(alpha: 0.2),
     );
   }
   canvas.restore();
@@ -228,7 +229,7 @@ Future<void> _drawCard(
     Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = cardW * 0.016
-      ..color = item.category.color,
+      ..color = moodColorOf(item),
   );
 }
 
