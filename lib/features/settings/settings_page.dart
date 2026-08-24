@@ -3,14 +3,43 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/tokens.dart';
+import '../backup/book_backup.dart';
 import 'theme_provider.dart';
 
-/// 設定: テーマ(カラー系統)の選択
-class SettingsPage extends ConsumerWidget {
+/// 設定: テーマ(カラー系統)の選択とバックアップ
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends ConsumerState<SettingsPage> {
+  bool _busy = false;
+
+  Future<void> _runBackup(Future<String?> Function() action) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final message = await action();
+      if (mounted && message != null && message.isNotEmpty) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(message)));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('失敗したよ: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final selected = ref.watch(themeProvider);
 
     return Scaffold(
@@ -39,6 +68,56 @@ class SettingsPage extends ConsumerWidget {
             'アプリアイコンの色はストア公開時のテーマに合わせています',
             style: TextStyle(fontSize: 11, color: CTColors.textSub),
           ),
+          const SizedBox(height: 24),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8, left: 4),
+            child: Text(
+              'バックアップ',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: CTColors.surface,
+              borderRadius: BorderRadius.circular(CTRadius.card),
+              boxShadow: ctCardShadow,
+            ),
+            child: Column(
+              children: [
+                ListTile(
+                  enabled: !_busy,
+                  leading: const Icon(Icons.archive_rounded),
+                  title: const Text(
+                    'まるごと書き出す',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    '全ページ・シール・カード・ボイスを1つのファイルに。iCloudやGoogleドライブに保存してね',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  onTap: () => _runBackup(() => exportBookBackup(ref)),
+                ),
+                const Divider(height: 1, indent: 16, endIndent: 16),
+                ListTile(
+                  enabled: !_busy,
+                  leading: const Icon(Icons.unarchive_rounded),
+                  title: const Text(
+                    'バックアップを読み込む',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: const Text(
+                    '機種変更のとき、保存したファイルから復元。同じデータは重複しないよ',
+                    style: TextStyle(fontSize: 11),
+                  ),
+                  onTap: () => _runBackup(() => importBookBackup(ref)),
+                ),
+              ],
+            ),
+          ),
+          if (_busy) ...[
+            const SizedBox(height: 12),
+            const Center(child: CircularProgressIndicator()),
+          ],
         ],
       ),
     );
