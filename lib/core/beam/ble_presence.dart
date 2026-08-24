@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -35,6 +36,27 @@ class BlePresenceTransport implements BeamTransport {
         return;
       }
 
+      // iOSは起動直後や権限ダイアログ中はアダプタ状態が不明で、
+      // その間にstartScanすると失敗する。ONになるまで待つ。
+      final state = await FlutterBluePlus.adapterState
+          .where(
+            (s) =>
+                s == BluetoothAdapterState.on ||
+                s == BluetoothAdapterState.unauthorized ||
+                s == BluetoothAdapterState.off,
+          )
+          .first
+          .timeout(const Duration(seconds: 15));
+      if (kDebugMode) debugPrint('[ble] adapterState=$state');
+      if (state == BluetoothAdapterState.unauthorized) {
+        _statusController.add(BeamPresenceStatus.permissionDenied);
+        return;
+      }
+      if (state != BluetoothAdapterState.on) {
+        _statusController.add(BeamPresenceStatus.error);
+        return;
+      }
+
       // 自分をアドバタイズ(名前は載る範囲でベストエフォート)
       try {
         await _peripheral.start(
@@ -43,8 +65,15 @@ class BlePresenceTransport implements BeamTransport {
             localName: me.advertiseName,
           ),
         );
-      } catch (_) {
+        if (kDebugMode) {
+          debugPrint(
+            '[ble] advertising=${await _peripheral.isAdvertising} '
+            'name=${me.advertiseName}',
+          );
+        }
+      } catch (e) {
         // アドバタイズ不可端末でもスキャン(=相手を見つける側)は続行
+        if (kDebugMode) debugPrint('[ble] advertise failed: $e');
       }
 
       // 周囲のしーるちょーユーザーをスキャン
@@ -69,6 +98,12 @@ class BlePresenceTransport implements BeamTransport {
   }
 
   void _onResults(List<ScanResult> results) {
+    if (kDebugMode && results.isNotEmpty) {
+      debugPrint(
+        '[ble] scan results=${results.length} '
+        'names=${[for (final r in results) r.advertisementData.advName]}',
+      );
+    }
     final now = DateTime.now();
     for (final r in results) {
       final name = r.advertisementData.advName;
