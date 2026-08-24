@@ -217,13 +217,18 @@ class _BeamPageState extends ConsumerState<BeamPage> {
       final stickers = await pickStickersForSend(context, ref);
       if (stickers == null || stickers.isEmpty || !mounted) return;
       bytes = stickers.length == 1
-          ? await buildStickerSharePng(ref, stickers.first)
+          ? await buildStickerSharePng(ref, stickers.first, maxDim: 900)
           : await buildStickerBundle(ref, stickers);
       label = stickers.length == 1 ? 'シール' : 'シール×${stickers.length}';
     } else {
       final page = await pickPageForSend(context, ref);
       if (page == null || !mounted) return;
-      bytes = await buildPageSharePng(ref, page, flatWidth: 540);
+      bytes = await buildPageSharePng(
+        ref,
+        page,
+        flatWidth: 540,
+        stickerMaxDim: 900,
+      );
       label = page.title.isEmpty ? 'シール帳' : 'シール帳「${page.title}」';
     }
     if (!mounted) return;

@@ -1,5 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
@@ -52,11 +54,39 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
   ], text: 'シールをあげる! しーるちょーの交換タブ「受け取る」で使えるよ');
 }
 
+/// 転送用にPNGを縮小する(最長辺maxDim以下ならそのまま)。
+/// BLE転送のサイズ削減用。表示上の品質には影響しない
+Future<Uint8List> _shrinkPng(Uint8List bytes, int maxDim) async {
+  try {
+    final codec = await ui.instantiateImageCodec(bytes);
+    final image = (await codec.getNextFrame()).image;
+    final longest = math.max(image.width, image.height);
+    if (longest <= maxDim) return bytes;
+    final scale = maxDim / longest;
+    final w = (image.width * scale).round();
+    final h = (image.height * scale).round();
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.drawImageRect(
+      image,
+      Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble()),
+      Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+      Paint()..filterQuality = FilterQuality.high,
+    );
+    final out = await recorder.endRecording().toImage(w, h);
+    final data = await out.toByteData(format: ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  } catch (_) {
+    return bytes;
+  }
+}
+
 /// シール1枚ぶんの共有メタデータ(includePng=trueで加工済みPNGも含める)
 Future<Map<String, dynamic>> _stickerShareMeta(
   WidgetRef ref,
   Sticker sticker, {
   bool includePng = false,
+  int? maxDim,
 }) async {
   final repo = ref.read(stickerRepositoryProvider);
   final db = ref.read(databaseProvider);
@@ -80,7 +110,9 @@ Future<Map<String, dynamic>> _stickerShareMeta(
   if (sticker.rawPath != null) {
     final rawFile = File(repo.resolve(sticker.rawPath!));
     if (rawFile.existsSync()) {
-      rawB64 = base64Encode(await rawFile.readAsBytes());
+      var rawBytes = await rawFile.readAsBytes();
+      if (maxDim != null) rawBytes = await _shrinkPng(rawBytes, maxDim);
+      rawB64 = base64Encode(rawBytes);
     }
   }
 
@@ -98,27 +130,38 @@ Future<Map<String, dynamic>> _stickerShareMeta(
     if (sticker.borderColor != null) 'borderColor': sticker.borderColor,
     if (includePng)
       'png': base64Encode(
-        await File(repo.resolve(sticker.imagePath)).readAsBytes(),
+        maxDim == null
+            ? await File(repo.resolve(sticker.imagePath)).readAsBytes()
+            : await _shrinkPng(
+                await File(repo.resolve(sticker.imagePath)).readAsBytes(),
+                maxDim,
+              ),
       ),
   };
 }
 
 /// シールのメタデータ入りPNGバイト列を作る(共有・BLE転送で共用)
-Future<Uint8List> buildStickerSharePng(WidgetRef ref, Sticker sticker) async {
+Future<Uint8List> buildStickerSharePng(
+  WidgetRef ref,
+  Sticker sticker, {
+  int? maxDim,
+}) async {
   final repo = ref.read(stickerRepositoryProvider);
-  final bytes = await File(repo.resolve(sticker.imagePath)).readAsBytes();
-  final meta = await _stickerShareMeta(ref, sticker);
+  var bytes = await File(repo.resolve(sticker.imagePath)).readAsBytes();
+  if (maxDim != null) bytes = await _shrinkPng(bytes, maxDim);
+  final meta = await _stickerShareMeta(ref, sticker, maxDim: maxDim);
   return StickerShare.embed(bytes, meta);
 }
 
 /// 複数シールの「まとめ袋」(JSONバイト列)。BLEその場交換専用
 Future<Uint8List> buildStickerBundle(
   WidgetRef ref,
-  List<Sticker> stickers,
-) async {
+  List<Sticker> stickers, {
+  int maxDim = 900,
+}) async {
   final entries = [
     for (final sticker in stickers)
-      await _stickerShareMeta(ref, sticker, includePng: true),
+      await _stickerShareMeta(ref, sticker, includePng: true, maxDim: maxDim),
   ];
   return Uint8List.fromList(
     utf8.encode(
@@ -148,6 +191,7 @@ Future<Uint8List> buildPageSharePng(
   WidgetRef ref,
   StickerPage page, {
   int flatWidth = 1080,
+  int? stickerMaxDim,
 }) async {
   final db = ref.read(databaseProvider);
   final stickerRepo = ref.read(stickerRepositoryProvider);
@@ -209,9 +253,12 @@ Future<Uint8List> buildPageSharePng(
         data['link'] = _linkOf(r.item!);
       case PageElementType.sticker:
         final sticker = r.sticker!;
-        final png = await File(
+        var png = await File(
           stickerRepo.resolve(sticker.imagePath),
         ).readAsBytes();
+        if (stickerMaxDim != null) {
+          png = await _shrinkPng(png, stickerMaxDim);
+        }
         embeddedBytes += png.length;
         if (embeddedBytes > _maxEmbedBytes) {
           overflow = true;
@@ -238,7 +285,10 @@ Future<Uint8List> buildPageSharePng(
         if (sticker.rawPath != null) {
           final rawFile = File(stickerRepo.resolve(sticker.rawPath!));
           if (rawFile.existsSync()) {
-            final rawBytes = await rawFile.readAsBytes();
+            var rawBytes = await rawFile.readAsBytes();
+            if (stickerMaxDim != null) {
+              rawBytes = await _shrinkPng(rawBytes, stickerMaxDim);
+            }
             embeddedBytes += rawBytes.length;
             if (embeddedBytes <= _maxEmbedBytes) {
               rawB64 = base64Encode(rawBytes);
