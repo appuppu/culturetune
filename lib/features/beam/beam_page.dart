@@ -52,6 +52,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
     _peersSub = transport.peers.listen((p) {
       if (mounted) setState(() => _peers = p);
     });
+    transport.advertiseInfo.addListener(_onAdvInfo);
     _statusSub = transport.status.listen((s) {
       if (mounted) setState(() => _status = s);
     });
@@ -59,9 +60,14 @@ class _BeamPageState extends ConsumerState<BeamPage> {
 
   @override
   void dispose() {
+    ref.read(beamTransportProvider).advertiseInfo.removeListener(_onAdvInfo);
     _peersSub?.cancel();
     _statusSub?.cancel();
     super.dispose();
+  }
+
+  void _onAdvInfo() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _toggleRadar(bool on) async {
@@ -422,9 +428,15 @@ class _BeamPageState extends ConsumerState<BeamPage> {
 
   String _statusLabel() {
     if (!_radarOn) return 'オンにすると近くのしーるちょーユーザーが見えるよ';
+    final adv = ref.read(beamTransportProvider).advertiseInfo.value;
+    final advLabel = switch (adv) {
+      'ok' => '発信OK',
+      '' => '発信準備中',
+      _ => '発信NG($adv)',
+    };
     return switch (_status) {
       BeamPresenceStatus.advertising =>
-        _peers.isEmpty ? 'さがし中…' : '${_peers.length}人 みつけた!',
+        '$advLabel / ${_peers.isEmpty ? 'さがし中…' : '${_peers.length}人 みつけた!'}',
       BeamPresenceStatus.unsupported => 'この端末はBluetoothに対応してないみたい',
       BeamPresenceStatus.permissionDenied => 'Bluetoothの許可が必要だよ(設定から変更してね)',
       BeamPresenceStatus.error => 'うまく動いてない…もう一度オンにしてみてね',

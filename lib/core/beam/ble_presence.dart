@@ -19,6 +19,9 @@ class BlePresenceTransport implements BeamTransport {
   );
 
   final _peripheral = FlutterBlePeripheral();
+
+  /// 発信状態の見える化(ok / error: ... / state=n)。UIの診断表示用
+  final ValueNotifier<String> advertiseInfo = ValueNotifier('');
   final _peersController = StreamController<List<BeamPeer>>.broadcast();
   final _statusController = StreamController<BeamPresenceStatus>.broadcast();
 
@@ -67,6 +70,14 @@ class BlePresenceTransport implements BeamTransport {
       // iOSはプラグインがpoweredOn前に発信して失敗するため自前実装を使う
       try {
         if (Platform.isIOS) {
+          _iosAdvertiseChannel.setMethodCallHandler((call) async {
+            if (call.method == 'advState') {
+              advertiseInfo.value = call.arguments as String? ?? '';
+              if (kDebugMode) {
+                debugPrint('[ble] advState=${advertiseInfo.value}');
+              }
+            }
+          });
           await _iosAdvertiseChannel.invokeMethod('start', {
             'name': me.advertiseName,
             'uuid': _serviceGuid.str128,

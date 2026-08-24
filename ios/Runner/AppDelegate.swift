@@ -127,6 +127,11 @@ import Vision
         name: "culturetune/ble_advertise",
         binaryMessenger: controller.binaryMessenger
       )
+      bleAdvertiser.onEvent = { message in
+        DispatchQueue.main.async {
+          bleChannel.invokeMethod("advState", arguments: message)
+        }
+      }
       bleChannel.setMethodCallHandler { [weak self] call, result in
         switch call.method {
         case "start":
@@ -314,6 +319,7 @@ class BleTransferPeripheral: NSObject, CBPeripheralManagerDelegate {
 class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
   private var manager: CBPeripheralManager?
   private var pending: [String: Any]?
+  var onEvent: ((String) -> Void)?
 
   func start(name: String, uuid: String) {
     pending = [
@@ -332,12 +338,27 @@ class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
   }
 
   private func advertiseIfReady() {
-    guard let manager, manager.state == .poweredOn, let pending else { return }
+    guard let manager else { return }
+    if manager.state != .poweredOn {
+      if manager.state != .unknown && manager.state != .resetting {
+        onEvent?("state=\(manager.state.rawValue)")
+      }
+      return
+    }
+    guard let pending else { return }
     manager.stopAdvertising()
     manager.startAdvertising(pending)
   }
 
   func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
     advertiseIfReady()
+  }
+
+  func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
+    if let error {
+      onEvent?("error: \(error.localizedDescription)")
+    } else {
+      onEvent?("ok")
+    }
   }
 }
