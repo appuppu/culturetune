@@ -228,6 +228,7 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
     'title': page.title,
     'createdAt': DateTime.now().toIso8601String(),
     if (page.bgColor != null) 'bgColor': page.bgColor,
+    if (page.borderColor != null) 'pageBorder': page.borderColor,
     if (!overflow) 'elements': elements,
     if (bgPng != null) 'bgPng': bgPng,
   };
@@ -480,6 +481,7 @@ Future<bool> _importPage(
       id: pageId,
       title: drift.Value(title),
       bgColor: drift.Value(meta['bgColor'] as String?),
+      borderColor: drift.Value(meta['pageBorder'] as String?),
       bgImagePath: drift.Value(bgImagePath),
       createdAt: now,
       updatedAt: now,

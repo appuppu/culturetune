@@ -88,9 +88,29 @@ Future<Uint8List> renderPageToPng({
     canvas.restore();
   }
 
+  // シール帳のフチ(内側に沿わせて描く)
+  final borderColor = _pageBorderColor(page);
+  if (borderColor != null) {
+    final stroke = w * 0.022;
+    canvas.drawRect(
+      Rect.fromLTWH(stroke / 2, stroke / 2, w - stroke, h - stroke),
+      Paint()
+        ..color = borderColor
+        ..style = ui.PaintingStyle.stroke
+        ..strokeWidth = stroke,
+    );
+  }
+
   final image = await recorder.endRecording().toImage(width, h.toInt());
   final bytes = await image.toByteData(format: ui.ImageByteFormat.png);
   return bytes!.buffer.asUint8List();
+}
+
+Color? _pageBorderColor(StickerPage page) {
+  final hex = page.borderColor;
+  if (hex == null || !hex.startsWith('#')) return null;
+  final value = int.tryParse(hex.substring(1), radix: 16);
+  return value == null ? null : Color(0xFF000000 | value);
 }
 
 Color _bgColor(StickerPage page) {

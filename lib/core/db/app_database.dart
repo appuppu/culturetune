@@ -69,6 +69,7 @@ class StickerPages extends Table {
   TextColumn get title => text().withDefault(const Constant(''))();
   TextColumn get bgColor => text().nullable()(); // hex(#FFF7F9)
   TextColumn get bgImagePath => text().nullable()(); // 背景写真(相対パス)
+  TextColumn get borderColor => text().nullable()(); // シール帳のフチ色 hex(nullなら無し)
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get updatedAt => dateTime()();
 
@@ -116,7 +117,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -136,6 +137,9 @@ class AppDatabase extends _$AppDatabase {
         await m.addColumn(stickers, stickers.rawPath);
         await m.addColumn(stickers, stickers.rawIsCutout);
         await m.addColumn(stickers, stickers.borderColor);
+      }
+      if (from < 7 && from >= 3) {
+        await m.addColumn(stickerPages, stickerPages.borderColor);
       }
       if (from < 4) {
         await m.createTable(pageElements);

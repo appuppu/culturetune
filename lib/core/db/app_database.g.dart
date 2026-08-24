@@ -2460,6 +2460,17 @@ class $StickerPagesTable extends StickerPages
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _borderColorMeta = const VerificationMeta(
+    'borderColor',
+  );
+  @override
+  late final GeneratedColumn<String> borderColor = GeneratedColumn<String>(
+    'border_color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2488,6 +2499,7 @@ class $StickerPagesTable extends StickerPages
     title,
     bgColor,
     bgImagePath,
+    borderColor,
     createdAt,
     updatedAt,
   ];
@@ -2526,6 +2538,15 @@ class $StickerPagesTable extends StickerPages
         bgImagePath.isAcceptableOrUnknown(
           data['bg_image_path']!,
           _bgImagePathMeta,
+        ),
+      );
+    }
+    if (data.containsKey('border_color')) {
+      context.handle(
+        _borderColorMeta,
+        borderColor.isAcceptableOrUnknown(
+          data['border_color']!,
+          _borderColorMeta,
         ),
       );
     }
@@ -2570,6 +2591,10 @@ class $StickerPagesTable extends StickerPages
         DriftSqlType.string,
         data['${effectivePrefix}bg_image_path'],
       ),
+      borderColor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}border_color'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2592,6 +2617,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
   final String title;
   final String? bgColor;
   final String? bgImagePath;
+  final String? borderColor;
   final DateTime createdAt;
   final DateTime updatedAt;
   const StickerPage({
@@ -2599,6 +2625,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
     required this.title,
     this.bgColor,
     this.bgImagePath,
+    this.borderColor,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -2612,6 +2639,9 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
     }
     if (!nullToAbsent || bgImagePath != null) {
       map['bg_image_path'] = Variable<String>(bgImagePath);
+    }
+    if (!nullToAbsent || borderColor != null) {
+      map['border_color'] = Variable<String>(borderColor);
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2628,6 +2658,9 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
       bgImagePath: bgImagePath == null && nullToAbsent
           ? const Value.absent()
           : Value(bgImagePath),
+      borderColor: borderColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(borderColor),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -2643,6 +2676,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
       title: serializer.fromJson<String>(json['title']),
       bgColor: serializer.fromJson<String?>(json['bgColor']),
       bgImagePath: serializer.fromJson<String?>(json['bgImagePath']),
+      borderColor: serializer.fromJson<String?>(json['borderColor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -2655,6 +2689,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
       'title': serializer.toJson<String>(title),
       'bgColor': serializer.toJson<String?>(bgColor),
       'bgImagePath': serializer.toJson<String?>(bgImagePath),
+      'borderColor': serializer.toJson<String?>(borderColor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -2665,6 +2700,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
     String? title,
     Value<String?> bgColor = const Value.absent(),
     Value<String?> bgImagePath = const Value.absent(),
+    Value<String?> borderColor = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => StickerPage(
@@ -2672,6 +2708,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
     title: title ?? this.title,
     bgColor: bgColor.present ? bgColor.value : this.bgColor,
     bgImagePath: bgImagePath.present ? bgImagePath.value : this.bgImagePath,
+    borderColor: borderColor.present ? borderColor.value : this.borderColor,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -2683,6 +2720,9 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
       bgImagePath: data.bgImagePath.present
           ? data.bgImagePath.value
           : this.bgImagePath,
+      borderColor: data.borderColor.present
+          ? data.borderColor.value
+          : this.borderColor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -2695,6 +2735,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
           ..write('title: $title, ')
           ..write('bgColor: $bgColor, ')
           ..write('bgImagePath: $bgImagePath, ')
+          ..write('borderColor: $borderColor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -2702,8 +2743,15 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, title, bgColor, bgImagePath, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    title,
+    bgColor,
+    bgImagePath,
+    borderColor,
+    createdAt,
+    updatedAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -2712,6 +2760,7 @@ class StickerPage extends DataClass implements Insertable<StickerPage> {
           other.title == this.title &&
           other.bgColor == this.bgColor &&
           other.bgImagePath == this.bgImagePath &&
+          other.borderColor == this.borderColor &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -2721,6 +2770,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
   final Value<String> title;
   final Value<String?> bgColor;
   final Value<String?> bgImagePath;
+  final Value<String?> borderColor;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   final Value<int> rowid;
@@ -2729,6 +2779,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
     this.title = const Value.absent(),
     this.bgColor = const Value.absent(),
     this.bgImagePath = const Value.absent(),
+    this.borderColor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2738,6 +2789,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
     this.title = const Value.absent(),
     this.bgColor = const Value.absent(),
     this.bgImagePath = const Value.absent(),
+    this.borderColor = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
     this.rowid = const Value.absent(),
@@ -2749,6 +2801,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
     Expression<String>? title,
     Expression<String>? bgColor,
     Expression<String>? bgImagePath,
+    Expression<String>? borderColor,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
     Expression<int>? rowid,
@@ -2758,6 +2811,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
       if (title != null) 'title': title,
       if (bgColor != null) 'bg_color': bgColor,
       if (bgImagePath != null) 'bg_image_path': bgImagePath,
+      if (borderColor != null) 'border_color': borderColor,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (rowid != null) 'rowid': rowid,
@@ -2769,6 +2823,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
     Value<String>? title,
     Value<String?>? bgColor,
     Value<String?>? bgImagePath,
+    Value<String?>? borderColor,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
     Value<int>? rowid,
@@ -2778,6 +2833,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
       title: title ?? this.title,
       bgColor: bgColor ?? this.bgColor,
       bgImagePath: bgImagePath ?? this.bgImagePath,
+      borderColor: borderColor ?? this.borderColor,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       rowid: rowid ?? this.rowid,
@@ -2799,6 +2855,9 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
     if (bgImagePath.present) {
       map['bg_image_path'] = Variable<String>(bgImagePath.value);
     }
+    if (borderColor.present) {
+      map['border_color'] = Variable<String>(borderColor.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2818,6 +2877,7 @@ class StickerPagesCompanion extends UpdateCompanion<StickerPage> {
           ..write('title: $title, ')
           ..write('bgColor: $bgColor, ')
           ..write('bgImagePath: $bgImagePath, ')
+          ..write('borderColor: $borderColor, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
@@ -4536,6 +4596,7 @@ typedef $$StickerPagesTableCreateCompanionBuilder =
       Value<String> title,
       Value<String?> bgColor,
       Value<String?> bgImagePath,
+      Value<String?> borderColor,
       required DateTime createdAt,
       required DateTime updatedAt,
       Value<int> rowid,
@@ -4546,6 +4607,7 @@ typedef $$StickerPagesTableUpdateCompanionBuilder =
       Value<String> title,
       Value<String?> bgColor,
       Value<String?> bgImagePath,
+      Value<String?> borderColor,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
       Value<int> rowid,
@@ -4577,6 +4639,11 @@ class $$StickerPagesTableFilterComposer
 
   ColumnFilters<String> get bgImagePath => $composableBuilder(
     column: $table.bgImagePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get borderColor => $composableBuilder(
+    column: $table.borderColor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4620,6 +4687,11 @@ class $$StickerPagesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get borderColor => $composableBuilder(
+    column: $table.borderColor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4651,6 +4723,11 @@ class $$StickerPagesTableAnnotationComposer
 
   GeneratedColumn<String> get bgImagePath => $composableBuilder(
     column: $table.bgImagePath,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get borderColor => $composableBuilder(
+    column: $table.borderColor,
     builder: (column) => column,
   );
 
@@ -4696,6 +4773,7 @@ class $$StickerPagesTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> bgColor = const Value.absent(),
                 Value<String?> bgImagePath = const Value.absent(),
+                Value<String?> borderColor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4704,6 +4782,7 @@ class $$StickerPagesTableTableManager
                 title: title,
                 bgColor: bgColor,
                 bgImagePath: bgImagePath,
+                borderColor: borderColor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,
@@ -4714,6 +4793,7 @@ class $$StickerPagesTableTableManager
                 Value<String> title = const Value.absent(),
                 Value<String?> bgColor = const Value.absent(),
                 Value<String?> bgImagePath = const Value.absent(),
+                Value<String?> borderColor = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
                 Value<int> rowid = const Value.absent(),
@@ -4722,6 +4802,7 @@ class $$StickerPagesTableTableManager
                 title: title,
                 bgColor: bgColor,
                 bgImagePath: bgImagePath,
+                borderColor: borderColor,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
                 rowid: rowid,

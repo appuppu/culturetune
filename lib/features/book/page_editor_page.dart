@@ -54,6 +54,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
   late String _title = widget.page.title;
   late String? _bgColorHex = widget.page.bgColor;
   late String? _bgImagePath = widget.page.bgImagePath;
+  late String? _pageBorderHex = widget.page.borderColor;
 
   double _startScale = 1;
   double _startRotation = 0;
@@ -119,6 +120,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
         title: Value(_title),
         bgColor: Value(_bgColorHex),
         bgImagePath: Value(_bgImagePath),
+        borderColor: Value(_pageBorderHex),
         createdAt: widget.page.createdAt,
         updatedAt: DateTime.now(),
       ),
@@ -130,6 +132,13 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
     if (hex == null || !hex.startsWith('#')) return CTColors.surface;
     final value = int.tryParse(hex.substring(1), radix: 16);
     return value == null ? CTColors.surface : Color(0xFF000000 | value);
+  }
+
+  Color? get _pageBorderColor {
+    final hex = _pageBorderHex;
+    if (hex == null || !hex.startsWith('#')) return null;
+    final value = int.tryParse(hex.substring(1), radix: 16);
+    return value == null ? null : Color(0xFF000000 | value);
   }
 
   ResolvedElement? get _selected {
@@ -473,6 +482,60 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                       ),
                   ],
                 ),
+                const SizedBox(height: 14),
+                Text(
+                  'シール帳のフチ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: CTColors.textSub,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    // なし
+                    GestureDetector(
+                      onTap: () => Navigator.pop(sheetContext, 'pborder:none'),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: CTColors.textSub.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.block_rounded,
+                          size: 20,
+                          color: CTColors.textSub,
+                        ),
+                      ),
+                    ),
+                    for (final color in [
+                      Colors.white,
+                      const Color(0xFF1B1D22),
+                      ...CTColors.moodPalette,
+                    ])
+                      GestureDetector(
+                        onTap: () => Navigator.pop(
+                          sheetContext,
+                          'pborder:${_hexOf(color)}',
+                        ),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: color, width: 7),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
                 const SizedBox(height: 8),
                 const Divider(),
                 ListTile(
@@ -549,6 +612,12 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
         );
         if (await file.exists()) await file.delete();
       }
+      return;
+    }
+    if (action.startsWith('pborder:')) {
+      final value = action.substring(8);
+      setState(() => _pageBorderHex = value == 'none' ? null : value);
+      await _persistPage();
       return;
     }
     if (action.startsWith('asset:')) {
@@ -762,6 +831,17 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                             if (r != null) _persistElement(r);
                           },
                           child: Container(
+                            foregroundDecoration: _pageBorderColor == null
+                                ? null
+                                : BoxDecoration(
+                                    borderRadius: BorderRadius.circular(
+                                      CTRadius.card,
+                                    ),
+                                    border: Border.all(
+                                      color: _pageBorderColor!,
+                                      width: 7,
+                                    ),
+                                  ),
                             decoration: BoxDecoration(
                               color: _bgColor,
                               borderRadius: BorderRadius.circular(

@@ -5,10 +5,15 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
 import '../../app/providers.dart';
 import '../../core/files/doc_paths.dart';
 import '../../core/db/app_database.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/stickers/page_renderer.dart';
+import '../palette/sticker_exchange.dart';
 import 'element_view.dart';
 import 'page_editor_page.dart';
 import 'page_models.dart';
@@ -201,6 +206,17 @@ class _PagePagerState extends ConsumerState<_PagePager> {
                         onLongPress: () => _confirmDelete(page),
                         child: PageCanvas(page: page, interactive: true),
                       ),
+                      // 共有(送る/画像化)
+                      Positioned(
+                        right: 8,
+                        bottom: 56,
+                        child: Consumer(
+                          builder: (context, ref, _) => _RoundIconButton(
+                            icon: Icons.ios_share_rounded,
+                            onTap: () => sharePageFromList(context, ref, page),
+                          ),
+                        ),
+                      ),
                       // ページ操作(デコる)
                       Positioned(
                         right: 8,
@@ -312,6 +328,66 @@ Future<void> createNewPage(BuildContext context, WidgetRef ref) async {
 
 /// ページの描画(ページャー・一覧グリッド共通)。
 /// interactive=trueなら要素タップでその場再生。
+/// シール帳の共有: ともだちに送る(データ入り) / 画像として共有
+Future<void> sharePageFromList(
+  BuildContext context,
+  WidgetRef ref,
+  StickerPage page,
+) async {
+  final action = await showModalBottomSheet<String>(
+    context: context,
+    backgroundColor: CTColors.bgBase,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
+    ),
+    builder: (sheetContext) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            leading: const Icon(Icons.favorite_rounded),
+            title: const Text('ともだちに送る'),
+            subtitle: const Text(
+              'しーるちょー同士の交換用。音楽や地図も動くデータ入り画像で届くよ',
+              style: TextStyle(fontSize: 12),
+            ),
+            onTap: () => Navigator.pop(sheetContext, 'meta'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.image_rounded),
+            title: const Text('画像として共有・保存'),
+            subtitle: const Text(
+              'インスタのストーリーなどに。見た目だけの画像(データなし)',
+              style: TextStyle(fontSize: 12),
+            ),
+            onTap: () => Navigator.pop(sheetContext, 'flat'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (action == null || !context.mounted) return;
+
+  ScaffoldMessenger.of(
+    context,
+  ).showSnackBar(const SnackBar(content: Text('シール帳を画像にしてるよ…')));
+  if (action == 'meta') {
+    await sharePageWithMeta(ref, page);
+    return;
+  }
+  final png = await renderPageToPng(
+    docs: ref.read(documentsDirProvider),
+    db: ref.read(databaseProvider),
+    stickerRepo: ref.read(stickerRepositoryProvider),
+    itemRepo: ref.read(itemRepositoryProvider),
+    page: page,
+  );
+  final dir = await getTemporaryDirectory();
+  final file = File('${dir.path}/book_${page.id}.png');
+  await file.writeAsBytes(png);
+  await Share.shareXFiles([XFile(file.path)]);
+}
+
 /// ページタイトル: レトロポップな二層文字(白文字+アクセント色の落ち影)
 class _PageTitle extends StatelessWidget {
   const _PageTitle({required this.title, required this.fontSize});
@@ -367,6 +443,13 @@ class PageCanvas extends ConsumerWidget {
     return value == null ? CTColors.surface : Color(0xFF000000 | value);
   }
 
+  Color? get _border {
+    final hex = page.borderColor;
+    if (hex == null || !hex.startsWith('#')) return null;
+    final value = int.tryParse(hex.substring(1), radix: 16);
+    return value == null ? null : Color(0xFF000000 | value);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final db = ref.watch(databaseProvider);
@@ -377,6 +460,13 @@ class PageCanvas extends ConsumerWidget {
         borderRadius: BorderRadius.circular(CTRadius.card),
         boxShadow: ctCardShadow,
       ),
+      // フチは要素の上に重ねて描く(額縁のイメージ)
+      foregroundDecoration: _border == null
+          ? null
+          : BoxDecoration(
+              borderRadius: BorderRadius.circular(CTRadius.card),
+              border: Border.all(color: _border!, width: 6),
+            ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         fit: StackFit.expand,

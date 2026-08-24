@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
@@ -81,6 +82,12 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       return const SizedBox.shrink();
     }
 
+    if (kDebugMode) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        debugPrint('[mini_player] size=${context.size}');
+      });
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(12, 0, 12, 8),
       decoration: BoxDecoration(
@@ -114,6 +121,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
           const SizedBox(width: 10),
           Expanded(
             child: Column(
+              // maxのままだとオーバーレイ配置で画面いっぱいに縦伸びする
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
