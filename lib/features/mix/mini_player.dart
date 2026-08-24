@@ -23,6 +23,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
   StreamSubscription<YoutubePlayerValue>? _sub;
   String? _loadedVideoId;
   int _consecutiveErrors = 0;
+  bool _playing = true;
 
   @override
   void dispose() {
@@ -53,6 +54,10 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       _loadedVideoId = track.videoId;
       _sub = _controller!.stream.listen((value) {
         if (value.playerState == PlayerState.playing) _consecutiveErrors = 0;
+        final playing = value.playerState == PlayerState.playing;
+        if (playing != _playing && mounted) {
+          setState(() => _playing = playing);
+        }
         if (value.playerState == PlayerState.ended) {
           ref.read(mixControllerProvider.notifier).next();
         } else if (value.hasError) {
@@ -91,13 +96,14 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 
     // YouTubeのデベロッパーポリシー準拠:
     // 埋め込みプレイヤーは200x200px以上で、動画を隠さず表示する。
-    // 全幅16:9で出し、高さは最低200pxを保証する(足りない端末は上下黒帯)。
+    // 見た目はYouTube Music風(ダーク基調・白アイコン)。
+    const ytDark = Color(0xFF0F0F0F);
+    const ytGrey = Color(0xFFAAAAAA);
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
       decoration: BoxDecoration(
-        color: CTColors.surface,
+        color: ytDark,
         borderRadius: BorderRadius.circular(CTRadius.card),
-        border: Border.all(color: CTColors.primary, width: 2),
         boxShadow: ctCardShadow,
       ),
       clipBehavior: Clip.antiAlias,
@@ -107,7 +113,7 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
           // WebView(プラットフォームビュー)はFlutterの角丸クリップが
           // 効かないため、カードの内側に余白を取って収める
           Padding(
-            padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final w = constraints.maxWidth;
@@ -123,41 +129,69 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
               },
             ),
           ),
-          Row(
-            children: [
-              const SizedBox(width: 12),
-              Icon(Icons.music_note_rounded, size: 14, color: CTColors.primary),
-              const SizedBox(width: 4),
-              Expanded(
-                child: Text(
-                  '${track.title}  ${track.subtitle ?? ''}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        track.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        [
+                          if (track.subtitle != null &&
+                              track.subtitle!.isNotEmpty)
+                            track.subtitle!,
+                          '${mix.index + 1}/${mix.queue.length}',
+                        ].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, color: ytGrey),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              Text(
-                '${mix.index + 1}/${mix.queue.length}',
-                style: TextStyle(fontSize: 10, color: CTColors.textSub),
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.skip_next_rounded),
-                color: CTColors.primary,
-                onPressed: () =>
-                    ref.read(mixControllerProvider.notifier).next(),
-              ),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close_rounded),
-                color: CTColors.textSub,
-                onPressed: () =>
-                    ref.read(mixControllerProvider.notifier).stop(),
-              ),
-            ],
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 34,
+                  icon: Icon(
+                    _playing
+                        ? Icons.pause_circle_filled_rounded
+                        : Icons.play_circle_filled_rounded,
+                  ),
+                  color: Colors.white,
+                  onPressed: () => _playing
+                      ? _controller?.pauseVideo()
+                      : _controller?.playVideo(),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  iconSize: 28,
+                  icon: const Icon(Icons.skip_next_rounded),
+                  color: Colors.white,
+                  onPressed: () =>
+                      ref.read(mixControllerProvider.notifier).next(),
+                ),
+                IconButton(
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.close_rounded),
+                  color: ytGrey,
+                  onPressed: () =>
+                      ref.read(mixControllerProvider.notifier).stop(),
+                ),
+              ],
+            ),
           ),
         ],
       ),
