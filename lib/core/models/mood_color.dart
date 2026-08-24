@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../db/app_database.dart';
-import 'culture_category.dart';
 
 /// カードの枠色。登録時に保存した気分カラー(hex固定)を最優先し、
 /// 無い場合のみカテゴリ色へフォールバックする。
