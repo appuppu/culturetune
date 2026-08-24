@@ -421,7 +421,7 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
             const SizedBox(height: 16),
             // カルチャー紐付け
             Text(
-              'カルチャーを埋め込む(任意)',
+              'カードを埋め込む(任意)',
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: 13,

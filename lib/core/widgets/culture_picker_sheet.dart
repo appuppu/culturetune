@@ -9,14 +9,14 @@ import 'thumb_image.dart';
 Future<CultureItem?> showCulturePickerSheet(
   BuildContext context,
   AppDatabase db, {
-  String title = 'どのカルチャーを埋め込む?',
+  String title = 'どのカードにする?',
 }) async {
   final items = await db.watchItems().first;
   if (!context.mounted) return null;
   if (items.isEmpty) {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('カードタブから先にカルチャーを登録してね')));
+    ).showSnackBar(const SnackBar(content: Text('シールタブの「カード」から先にカードをつくってね')));
     return null;
   }
   return showModalBottomSheet<CultureItem>(
