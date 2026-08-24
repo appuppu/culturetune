@@ -107,16 +107,8 @@ class ItemRepository {
         createdAt: DateTime.now(),
       ),
     );
-    await _db.insertBeam(
-      BeamsCompanion.insert(
-        id: _uuid.v4(),
-        direction: BeamDirection.received,
-        peerName: card.senderName,
-        peerColor: Value(card.senderColor),
-        cardId: id,
-        beamedAt: DateTime.now(),
-      ),
-    );
+    // 履歴は呼び出し側がrecordExchangeで1交換=1件として記録する
+    // (ページ内の埋め込みカードごとに履歴が増えるのを防ぐ)
     return id;
   }
 

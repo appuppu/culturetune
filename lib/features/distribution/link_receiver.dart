@@ -9,6 +9,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../app/providers.dart';
 import '../../core/models/beam_card.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/models/culture_category.dart';
+import '../beam/exchange_history.dart';
 import 'card_link.dart';
 
 /// 配布リンク(https / culturetune://)でアプリが開かれたときの受信処理。
@@ -57,6 +59,13 @@ Future<bool> receiveCardFromUri(
   );
   if (accepted != true) return false;
   await ref.read(itemRepositoryProvider).saveBeamCard(card);
+  await recordExchange(
+    ref,
+    direction: BeamDirection.received,
+    peerName: card.senderName,
+    peerColor: card.senderColor,
+    label: 'カード「${card.title}」',
+  );
   if (context.mounted) {
     HapticFeedback.mediumImpact();
     ScaffoldMessenger.of(context).showSnackBar(
