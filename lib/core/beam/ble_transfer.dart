@@ -57,12 +57,22 @@ abstract final class BleTransfer {
     if (state != BluetoothAdapterState.on) return null;
 
     onProgress(0, 'あいてを探してるよ…');
+    // OSのサービスフィルタは取りこぼすことがあるため、
+    // 全スキャンしてアプリ側でUUID選別する(レーダーと同じ方式)
     BluetoothDevice? found;
     final scanSub = FlutterBluePlus.onScanResults.listen((results) {
-      if (results.isNotEmpty) found ??= results.first.device;
+      for (final r in results) {
+        final hit = r.advertisementData.serviceUuids.any(
+          (g) => g.str128.toLowerCase().contains('c71f'),
+        );
+        if (hit) {
+          found ??= r.device;
+          break;
+        }
+      }
     });
     await FlutterBluePlus.startScan(
-      withServices: [serviceGuid],
+      continuousUpdates: true,
       timeout: const Duration(seconds: 25),
     );
     final deadline = DateTime.now().add(const Duration(seconds: 25));
