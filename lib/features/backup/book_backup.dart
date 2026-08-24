@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:archive/archive.dart';
 import 'package:drift/drift.dart' as drift;
-import 'package:file_picker/file_picker.dart';
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -206,9 +206,15 @@ Future<String?> exportBookBackup(WidgetRef ref) async {
 /// 読み込み: ファイルを選んで復元。同じIDのデータは上書き(2回読んでも重複しない)。
 /// 戻り値は結果メッセージ。
 Future<String> importBookBackup(WidgetRef ref) async {
-  final picked = await FilePicker.pickFiles(type: FileType.any);
-  final path = picked?.files.single.path;
-  if (path == null) return '';
+  const zipGroup = XTypeGroup(
+    label: 'バックアップ',
+    extensions: ['zip'],
+    mimeTypes: ['application/zip'],
+    uniformTypeIdentifiers: ['public.zip-archive'],
+  );
+  final picked = await openFile(acceptedTypeGroups: const [zipGroup]);
+  if (picked == null) return '';
+  final path = picked.path;
 
   final Archive archive;
   try {
