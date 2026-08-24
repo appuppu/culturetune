@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android release signing (絶対にコミットしない)
+android/key.properties
+android/app/upload-keystore.jks
+android/keystore_password.txt
