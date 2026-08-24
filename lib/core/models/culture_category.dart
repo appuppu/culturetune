@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../theme/tokens.dart';
 
 enum CultureCategory {
-  book(icon: Icons.menu_book_rounded, labelJa: '本'),
+  // 並び順はカテゴリピル等の表示順(All, 音楽, 動画, ご飯, 本)
   music(icon: Icons.music_note_rounded, labelJa: '音楽'),
   video(icon: Icons.smart_display_rounded, labelJa: '動画'),
-  food(icon: Icons.restaurant_rounded, labelJa: 'ご飯');
+  food(icon: Icons.restaurant_rounded, labelJa: 'ご飯'),
+  book(icon: Icons.menu_book_rounded, labelJa: '本');
 
   const CultureCategory({required this.icon, required this.labelJa});
 

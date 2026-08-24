@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/tokens.dart';
 import '../palette/create_sticker_page.dart';
 import '../palette/palette_page.dart';
-import '../palette/sticker_exchange.dart';
 import '../post/post_flow.dart';
 import '../settings/settings_page.dart';
 import '../vault/vault_page.dart';
@@ -162,18 +161,6 @@ void _showCreateSheet(BuildContext context, WidgetRef ref) {
             onTap: () {
               Navigator.pop(sheetContext);
               showPostCategorySheet(context);
-            },
-          ),
-          ListTile(
-            leading: const Icon(Icons.download_rounded),
-            title: const Text('もらった画像を取り込む'),
-            subtitle: const Text(
-              'LINEなどで届いたシール/シール帳のPNGを復元',
-              style: TextStyle(fontSize: 12),
-            ),
-            onTap: () {
-              Navigator.pop(sheetContext);
-              importStickerFromGallery(context, ref);
             },
           ),
         ],

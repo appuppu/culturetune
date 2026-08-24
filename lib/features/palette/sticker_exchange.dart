@@ -7,7 +7,6 @@ import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:uuid/uuid.dart';
@@ -20,7 +19,6 @@ import '../../core/models/culture_category.dart';
 import '../../core/models/page_element_type.dart';
 import '../../core/models/sticker_texture.dart';
 import '../../core/stickers/page_renderer.dart';
-import '../../core/theme/tokens.dart';
 import '../../core/stickers/sticker_share.dart';
 import '../beam/beam_profile_provider.dart';
 import '../beam/exchange_history.dart';
@@ -342,99 +340,6 @@ Future<Uint8List> buildPageSharePng(
   };
 
   return StickerShare.embed(flatPng, meta);
-}
-
-/// ギャラリーの画像からシール/ページを取り込む(共有シートで受け取ったPNG)。
-Future<void> importStickerFromGallery(
-  BuildContext context,
-  WidgetRef ref,
-) async {
-  // なぜ写真フォルダが開くのかを先に説明する
-  final go = await showModalBottomSheet<bool>(
-    context: context,
-    backgroundColor: CTColors.bgBase,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
-    ),
-    builder: (sheetContext) => SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'もらったシールの取り込みかた',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-            ),
-            const SizedBox(height: 14),
-            for (final (i, step) in [
-              'ともだちが「送る」で共有 → LINEなどに画像が届く',
-              '届いた画像を写真に保存する',
-              '下のボタンでその画像を選ぶと、シール/シール帳として復元されるよ',
-            ].indexed) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 20,
-                    height: 20,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: CTColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Text(
-                      '${i + 1}',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        color: CTColors.onAccent(CTColors.primary),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(step, style: const TextStyle(height: 1.4)),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-            ],
-            Text(
-              'スクショだと中のデータが消えるので、届いた画像そのものを保存してね',
-              style: TextStyle(fontSize: 11, color: CTColors.textSub),
-            ),
-            const SizedBox(height: 14),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-              ),
-              onPressed: () => Navigator.pop(sheetContext, true),
-              icon: const Icon(Icons.photo_library_rounded, size: 18),
-              label: const Text('写真から画像を選ぶ'),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-  if (go != true || !context.mounted) return;
-
-  final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-  if (file == null || !context.mounted) return;
-
-  final bytes = await file.readAsBytes();
-  final message = await importSharedPngBytes(ref, bytes);
-  if (!context.mounted) return;
-  if (message == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('しーるちょーのシールじゃないみたい(スクショではなく元のPNGを保存してね)')),
-    );
-    return;
-  }
-  HapticFeedback.mediumImpact();
-  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
 }
 
 /// 共有PNG(シール/シール帳)のバイト列を取り込む。
