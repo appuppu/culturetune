@@ -10,6 +10,7 @@ import '../beam/beam_profile_provider.dart';
 import '../detail/culture_modal.dart';
 import 'create_sticker_page.dart';
 import '../../core/stickers/voice_player.dart';
+import '../../core/widgets/border_color_sheet.dart';
 import 'sticker_exchange.dart';
 
 /// シール素材のグリッド(シールタブに埋め込まれる)
@@ -200,6 +201,28 @@ Future<void> showStickerSheet(
                       playVoice(sheetRef, repo.resolve(sticker.audioPath!)),
                   icon: const Icon(Icons.volume_up_rounded, size: 18),
                   label: const Text('ボイスを聞く'),
+                ),
+              ),
+            ],
+            if (sticker.rawPath != null) ...[
+              const SizedBox(height: 10),
+              Consumer(
+                builder: (context, sheetRef, _) => OutlinedButton.icon(
+                  onPressed: () async {
+                    final color = await showBorderColorSheet(context);
+                    if (color == null) return;
+                    final ok = await sheetRef
+                        .read(stickerRepositoryProvider)
+                        .recolorBorder(sticker, color);
+                    if (sheetContext.mounted) Navigator.pop(sheetContext);
+                    if (context.mounted && ok) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('フチの色を変えたよ')),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.palette_rounded, size: 18),
+                  label: const Text('フチの色を変える'),
                 ),
               ),
             ],

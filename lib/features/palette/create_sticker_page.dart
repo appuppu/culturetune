@@ -233,6 +233,10 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
             audioBytes: _audioPath != null
                 ? await File(_audioPath!).readAsBytes()
                 : null,
+            rawSourcePath: _cutoutPath ?? _photoPath,
+            rawIsCutout: _cutoutPath != null,
+            borderColorHex:
+                '#${(_borderColor.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}',
           );
       if (!mounted) return;
       HapticFeedback.mediumImpact();

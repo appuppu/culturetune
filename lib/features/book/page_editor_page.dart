@@ -16,6 +16,7 @@ import '../../app/providers.dart';
 import '../../core/db/app_database.dart';
 import '../../core/models/page_element_type.dart';
 import '../../core/theme/tokens.dart';
+import '../../core/widgets/border_color_sheet.dart';
 import '../../core/widgets/thumb_image.dart';
 import '../palette/create_sticker_page.dart';
 import '../post/post_flow.dart';
@@ -66,29 +67,6 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
 
   Future<void> _load() async {
     final elements = await loadResolvedElements(_db, widget.page.id);
-
-    // 誰のシール帳かわかるように、プロフィールアイコンは必ず1つ置く
-    if (!elements.any((e) => e.type == PageElementType.profile)) {
-      final maxZ = elements.isEmpty
-          ? 0
-          : elements.map((e) => e.element.z).reduce((a, b) => a > b ? a : b);
-      final resolved = ResolvedElement(
-        element: PageElement(
-          id: _uuid.v4(),
-          pageId: widget.page.id,
-          type: PageElementType.profile,
-          refId: null,
-          payload: const ProfilePayload().toJson(),
-          x: 0.84,
-          y: 0.93,
-          scale: 1,
-          rotation: 0,
-          z: maxZ + 1,
-        ),
-      );
-      elements.add(resolved);
-      await _persistElement(resolved);
-    }
 
     if (!mounted) return;
     setState(() {
@@ -173,6 +151,57 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
       rotation: 0,
       z: _maxZ + 1,
     );
+  }
+
+  /// プロフィールアイコンを貼る(任意・1ページ1つまで)
+  Future<void> _addProfile() async {
+    final existing = _elements
+        .where((e) => e.type == PageElementType.profile)
+        .toList();
+    if (existing.isNotEmpty) {
+      setState(() => _selectedId = existing.first.element.id);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('プロフィールはもう貼ってあるよ(ダブルタップで形や色を変えられる)')),
+      );
+      return;
+    }
+    await _addElement(
+      ResolvedElement(
+        element: PageElement(
+          id: _uuid.v4(),
+          pageId: widget.page.id,
+          type: PageElementType.profile,
+          refId: null,
+          payload: const ProfilePayload().toJson(),
+          x: 0.84,
+          y: 0.93,
+          scale: 1,
+          rotation: 0,
+          z: _maxZ + 1,
+        ),
+      ),
+    );
+  }
+
+  /// 選択中シールのフチ色を変える(素材があるシールのみ)
+  Future<void> _recolorSelected() async {
+    final r = _selected;
+    final sticker = r?.sticker;
+    if (sticker == null) return;
+    if (sticker.rawPath == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('このシールは素材が無いのでフチ色を変えられないよ(もらったシール・古いシール)'),
+        ),
+      );
+      return;
+    }
+    final color = await showBorderColorSheet(context);
+    if (color == null || !mounted) return;
+    final ok = await ref
+        .read(stickerRepositoryProvider)
+        .recolorBorder(sticker, color);
+    if (ok && mounted) setState(() {});
   }
 
   /// シールを選んで貼る。1枚も無ければその場で作成→自動で貼る
@@ -332,12 +361,6 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
   Future<void> _removeSelected() async {
     final r = _selected;
     if (r == null) return;
-    if (r.type == PageElementType.profile) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('プロフィールは外せないよ(移動や形は変えられる)')));
-      return;
-    }
     HapticFeedback.heavyImpact(); // ペリッ
     setState(() {
       _elements.removeWhere((e) => e.element.id == r.element.id);
@@ -667,6 +690,18 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
                       icon: Icons.palette_rounded,
                       label: '背景',
                       onTap: _pickBackground,
+                    ),
+                    _ToolButton(
+                      icon: Icons.account_circle_rounded,
+                      label: 'プロフ',
+                      onTap: _addProfile,
+                    ),
+                    _ToolButton(
+                      icon: Icons.format_color_fill_rounded,
+                      label: 'フチ色',
+                      onTap: selected?.sticker == null
+                          ? null
+                          : _recolorSelected,
                     ),
                     _ToolButton(
                       icon: Icons.flip_to_front_rounded,

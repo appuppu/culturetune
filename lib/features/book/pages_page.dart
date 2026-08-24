@@ -377,22 +377,38 @@ class PageCanvas extends ConsumerWidget {
               );
             },
           ),
+          // タイトル: 左上に大きめ表示(背景に埋もれないよう影付き)
           if (page.title.isNotEmpty)
-            Positioned(
-              left: 8,
-              top: 8,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.35),
-                  borderRadius: BorderRadius.circular(CTRadius.pill),
-                ),
-                child: Text(
-                  page.title,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Align(
+                  alignment: Alignment.topLeft,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      constraints.maxWidth * 0.05,
+                      constraints.maxWidth * 0.045,
+                      constraints.maxWidth * 0.05,
+                      0,
+                    ),
+                    child: Text(
+                      page.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: constraints.maxWidth * 0.062,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        height: 1.25,
+                        shadows: const [
+                          Shadow(
+                            color: Colors.black54,
+                            blurRadius: 6,
+                            offset: Offset(0, 1),
+                          ),
+                          Shadow(color: Colors.black38, blurRadius: 14),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

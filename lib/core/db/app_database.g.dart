@@ -1759,6 +1759,43 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _rawPathMeta = const VerificationMeta(
+    'rawPath',
+  );
+  @override
+  late final GeneratedColumn<String> rawPath = GeneratedColumn<String>(
+    'raw_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _rawIsCutoutMeta = const VerificationMeta(
+    'rawIsCutout',
+  );
+  @override
+  late final GeneratedColumn<bool> rawIsCutout = GeneratedColumn<bool>(
+    'raw_is_cutout',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("raw_is_cutout" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _borderColorMeta = const VerificationMeta(
+    'borderColor',
+  );
+  @override
+  late final GeneratedColumn<String> borderColor = GeneratedColumn<String>(
+    'border_color',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1780,6 +1817,9 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
     source,
     linkedItemId,
     audioPath,
+    rawPath,
+    rawIsCutout,
+    borderColor,
     createdAt,
   ];
   @override
@@ -1842,6 +1882,30 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
         audioPath.isAcceptableOrUnknown(data['audio_path']!, _audioPathMeta),
       );
     }
+    if (data.containsKey('raw_path')) {
+      context.handle(
+        _rawPathMeta,
+        rawPath.isAcceptableOrUnknown(data['raw_path']!, _rawPathMeta),
+      );
+    }
+    if (data.containsKey('raw_is_cutout')) {
+      context.handle(
+        _rawIsCutoutMeta,
+        rawIsCutout.isAcceptableOrUnknown(
+          data['raw_is_cutout']!,
+          _rawIsCutoutMeta,
+        ),
+      );
+    }
+    if (data.containsKey('border_color')) {
+      context.handle(
+        _borderColorMeta,
+        borderColor.isAcceptableOrUnknown(
+          data['border_color']!,
+          _borderColorMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1895,6 +1959,18 @@ class $StickersTable extends Stickers with TableInfo<$StickersTable, Sticker> {
         DriftSqlType.string,
         data['${effectivePrefix}audio_path'],
       ),
+      rawPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}raw_path'],
+      ),
+      rawIsCutout: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}raw_is_cutout'],
+      )!,
+      borderColor: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}border_color'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1922,6 +1998,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
   final CardSource source;
   final String? linkedItemId;
   final String? audioPath;
+  final String? rawPath;
+  final bool rawIsCutout;
+  final String? borderColor;
   final DateTime createdAt;
   const Sticker({
     required this.id,
@@ -1932,6 +2011,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     required this.source,
     this.linkedItemId,
     this.audioPath,
+    this.rawPath,
+    required this.rawIsCutout,
+    this.borderColor,
     required this.createdAt,
   });
   @override
@@ -1959,6 +2041,13 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     if (!nullToAbsent || audioPath != null) {
       map['audio_path'] = Variable<String>(audioPath);
     }
+    if (!nullToAbsent || rawPath != null) {
+      map['raw_path'] = Variable<String>(rawPath);
+    }
+    map['raw_is_cutout'] = Variable<bool>(rawIsCutout);
+    if (!nullToAbsent || borderColor != null) {
+      map['border_color'] = Variable<String>(borderColor);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -1979,6 +2068,13 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       audioPath: audioPath == null && nullToAbsent
           ? const Value.absent()
           : Value(audioPath),
+      rawPath: rawPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(rawPath),
+      rawIsCutout: Value(rawIsCutout),
+      borderColor: borderColor == null && nullToAbsent
+          ? const Value.absent()
+          : Value(borderColor),
       createdAt: Value(createdAt),
     );
   }
@@ -2001,6 +2097,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       ),
       linkedItemId: serializer.fromJson<String?>(json['linkedItemId']),
       audioPath: serializer.fromJson<String?>(json['audioPath']),
+      rawPath: serializer.fromJson<String?>(json['rawPath']),
+      rawIsCutout: serializer.fromJson<bool>(json['rawIsCutout']),
+      borderColor: serializer.fromJson<String?>(json['borderColor']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -2020,6 +2119,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
       ),
       'linkedItemId': serializer.toJson<String?>(linkedItemId),
       'audioPath': serializer.toJson<String?>(audioPath),
+      'rawPath': serializer.toJson<String?>(rawPath),
+      'rawIsCutout': serializer.toJson<bool>(rawIsCutout),
+      'borderColor': serializer.toJson<String?>(borderColor),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -2033,6 +2135,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     CardSource? source,
     Value<String?> linkedItemId = const Value.absent(),
     Value<String?> audioPath = const Value.absent(),
+    Value<String?> rawPath = const Value.absent(),
+    bool? rawIsCutout,
+    Value<String?> borderColor = const Value.absent(),
     DateTime? createdAt,
   }) => Sticker(
     id: id ?? this.id,
@@ -2043,6 +2148,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     source: source ?? this.source,
     linkedItemId: linkedItemId.present ? linkedItemId.value : this.linkedItemId,
     audioPath: audioPath.present ? audioPath.value : this.audioPath,
+    rawPath: rawPath.present ? rawPath.value : this.rawPath,
+    rawIsCutout: rawIsCutout ?? this.rawIsCutout,
+    borderColor: borderColor.present ? borderColor.value : this.borderColor,
     createdAt: createdAt ?? this.createdAt,
   );
   Sticker copyWithCompanion(StickersCompanion data) {
@@ -2061,6 +2169,13 @@ class Sticker extends DataClass implements Insertable<Sticker> {
           ? data.linkedItemId.value
           : this.linkedItemId,
       audioPath: data.audioPath.present ? data.audioPath.value : this.audioPath,
+      rawPath: data.rawPath.present ? data.rawPath.value : this.rawPath,
+      rawIsCutout: data.rawIsCutout.present
+          ? data.rawIsCutout.value
+          : this.rawIsCutout,
+      borderColor: data.borderColor.present
+          ? data.borderColor.value
+          : this.borderColor,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -2076,6 +2191,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
           ..write('source: $source, ')
           ..write('linkedItemId: $linkedItemId, ')
           ..write('audioPath: $audioPath, ')
+          ..write('rawPath: $rawPath, ')
+          ..write('rawIsCutout: $rawIsCutout, ')
+          ..write('borderColor: $borderColor, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -2091,6 +2209,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
     source,
     linkedItemId,
     audioPath,
+    rawPath,
+    rawIsCutout,
+    borderColor,
     createdAt,
   );
   @override
@@ -2105,6 +2226,9 @@ class Sticker extends DataClass implements Insertable<Sticker> {
           other.source == this.source &&
           other.linkedItemId == this.linkedItemId &&
           other.audioPath == this.audioPath &&
+          other.rawPath == this.rawPath &&
+          other.rawIsCutout == this.rawIsCutout &&
+          other.borderColor == this.borderColor &&
           other.createdAt == this.createdAt);
 }
 
@@ -2117,6 +2241,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
   final Value<CardSource> source;
   final Value<String?> linkedItemId;
   final Value<String?> audioPath;
+  final Value<String?> rawPath;
+  final Value<bool> rawIsCutout;
+  final Value<String?> borderColor;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const StickersCompanion({
@@ -2128,6 +2255,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     this.source = const Value.absent(),
     this.linkedItemId = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.rawPath = const Value.absent(),
+    this.rawIsCutout = const Value.absent(),
+    this.borderColor = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -2140,6 +2270,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     this.source = const Value.absent(),
     this.linkedItemId = const Value.absent(),
     this.audioPath = const Value.absent(),
+    this.rawPath = const Value.absent(),
+    this.rawIsCutout = const Value.absent(),
+    this.borderColor = const Value.absent(),
     required DateTime createdAt,
     this.rowid = const Value.absent(),
   }) : id = Value(id),
@@ -2155,6 +2288,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     Expression<String>? source,
     Expression<String>? linkedItemId,
     Expression<String>? audioPath,
+    Expression<String>? rawPath,
+    Expression<bool>? rawIsCutout,
+    Expression<String>? borderColor,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -2167,6 +2303,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
       if (source != null) 'source': source,
       if (linkedItemId != null) 'linked_item_id': linkedItemId,
       if (audioPath != null) 'audio_path': audioPath,
+      if (rawPath != null) 'raw_path': rawPath,
+      if (rawIsCutout != null) 'raw_is_cutout': rawIsCutout,
+      if (borderColor != null) 'border_color': borderColor,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -2181,6 +2320,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     Value<CardSource>? source,
     Value<String?>? linkedItemId,
     Value<String?>? audioPath,
+    Value<String?>? rawPath,
+    Value<bool>? rawIsCutout,
+    Value<String?>? borderColor,
     Value<DateTime>? createdAt,
     Value<int>? rowid,
   }) {
@@ -2193,6 +2335,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
       source: source ?? this.source,
       linkedItemId: linkedItemId ?? this.linkedItemId,
       audioPath: audioPath ?? this.audioPath,
+      rawPath: rawPath ?? this.rawPath,
+      rawIsCutout: rawIsCutout ?? this.rawIsCutout,
+      borderColor: borderColor ?? this.borderColor,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -2229,6 +2374,15 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
     if (audioPath.present) {
       map['audio_path'] = Variable<String>(audioPath.value);
     }
+    if (rawPath.present) {
+      map['raw_path'] = Variable<String>(rawPath.value);
+    }
+    if (rawIsCutout.present) {
+      map['raw_is_cutout'] = Variable<bool>(rawIsCutout.value);
+    }
+    if (borderColor.present) {
+      map['border_color'] = Variable<String>(borderColor.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2249,6 +2403,9 @@ class StickersCompanion extends UpdateCompanion<Sticker> {
           ..write('source: $source, ')
           ..write('linkedItemId: $linkedItemId, ')
           ..write('audioPath: $audioPath, ')
+          ..write('rawPath: $rawPath, ')
+          ..write('rawIsCutout: $rawIsCutout, ')
+          ..write('borderColor: $borderColor, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -4044,6 +4201,9 @@ typedef $$StickersTableCreateCompanionBuilder =
       Value<CardSource> source,
       Value<String?> linkedItemId,
       Value<String?> audioPath,
+      Value<String?> rawPath,
+      Value<bool> rawIsCutout,
+      Value<String?> borderColor,
       required DateTime createdAt,
       Value<int> rowid,
     });
@@ -4057,6 +4217,9 @@ typedef $$StickersTableUpdateCompanionBuilder =
       Value<CardSource> source,
       Value<String?> linkedItemId,
       Value<String?> audioPath,
+      Value<String?> rawPath,
+      Value<bool> rawIsCutout,
+      Value<String?> borderColor,
       Value<DateTime> createdAt,
       Value<int> rowid,
     });
@@ -4109,6 +4272,21 @@ class $$StickersTableFilterComposer
 
   ColumnFilters<String> get audioPath => $composableBuilder(
     column: $table.audioPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get rawPath => $composableBuilder(
+    column: $table.rawPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get rawIsCutout => $composableBuilder(
+    column: $table.rawIsCutout,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get borderColor => $composableBuilder(
+    column: $table.borderColor,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4167,6 +4345,21 @@ class $$StickersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get rawPath => $composableBuilder(
+    column: $table.rawPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get rawIsCutout => $composableBuilder(
+    column: $table.rawIsCutout,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get borderColor => $composableBuilder(
+    column: $table.borderColor,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4212,6 +4405,19 @@ class $$StickersTableAnnotationComposer
   GeneratedColumn<String> get audioPath =>
       $composableBuilder(column: $table.audioPath, builder: (column) => column);
 
+  GeneratedColumn<String> get rawPath =>
+      $composableBuilder(column: $table.rawPath, builder: (column) => column);
+
+  GeneratedColumn<bool> get rawIsCutout => $composableBuilder(
+    column: $table.rawIsCutout,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get borderColor => $composableBuilder(
+    column: $table.borderColor,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -4252,6 +4458,9 @@ class $$StickersTableTableManager
                 Value<CardSource> source = const Value.absent(),
                 Value<String?> linkedItemId = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String?> rawPath = const Value.absent(),
+                Value<bool> rawIsCutout = const Value.absent(),
+                Value<String?> borderColor = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => StickersCompanion(
@@ -4263,6 +4472,9 @@ class $$StickersTableTableManager
                 source: source,
                 linkedItemId: linkedItemId,
                 audioPath: audioPath,
+                rawPath: rawPath,
+                rawIsCutout: rawIsCutout,
+                borderColor: borderColor,
                 createdAt: createdAt,
                 rowid: rowid,
               ),
@@ -4276,6 +4488,9 @@ class $$StickersTableTableManager
                 Value<CardSource> source = const Value.absent(),
                 Value<String?> linkedItemId = const Value.absent(),
                 Value<String?> audioPath = const Value.absent(),
+                Value<String?> rawPath = const Value.absent(),
+                Value<bool> rawIsCutout = const Value.absent(),
+                Value<String?> borderColor = const Value.absent(),
                 required DateTime createdAt,
                 Value<int> rowid = const Value.absent(),
               }) => StickersCompanion.insert(
@@ -4287,6 +4502,9 @@ class $$StickersTableTableManager
                 source: source,
                 linkedItemId: linkedItemId,
                 audioPath: audioPath,
+                rawPath: rawPath,
+                rawIsCutout: rawIsCutout,
+                borderColor: borderColor,
                 createdAt: createdAt,
                 rowid: rowid,
               ),

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data' show Uint8List;
 
 import 'package:drift/drift.dart' hide Uint8List;
+import 'package:flutter/painting.dart' show Color, FileImage;
 import 'package:uuid/uuid.dart';
 
 import '../db/app_database.dart';
@@ -65,6 +66,9 @@ class StickerRepository {
     String? linkedItemId,
     CardSource source = CardSource.beam,
     Uint8List? audioBytes,
+    String? rawSourcePath,
+    bool rawIsCutout = false,
+    String? borderColorHex,
   }) {
     return _save(
       bytes: pngBytes,
@@ -74,6 +78,9 @@ class StickerRepository {
       linkedItemId: linkedItemId,
       source: source,
       audioBytes: audioBytes,
+      rawSourcePath: rawSourcePath,
+      rawIsCutout: rawIsCutout,
+      borderColorHex: borderColorHex,
     );
   }
 
@@ -85,6 +92,9 @@ class StickerRepository {
     required String? linkedItemId,
     required CardSource source,
     Uint8List? audioBytes,
+    String? rawSourcePath,
+    bool rawIsCutout = false,
+    String? borderColorHex,
   }) async {
     final id = _uuid.v4();
     final dir = await _stickersDir();
@@ -93,6 +103,12 @@ class StickerRepository {
     if (audioBytes != null && audioBytes.isNotEmpty) {
       await File('${dir.path}/$id.m4a').writeAsBytes(audioBytes);
       audioPath = 'stickers/$id.m4a';
+    }
+    // フチ色を後から変えられるよう、加工前の素材を保存しておく
+    String? rawPath;
+    if (rawSourcePath != null && File(rawSourcePath).existsSync()) {
+      await File(rawSourcePath).copy('${dir.path}/${id}_raw.png');
+      rawPath = 'stickers/${id}_raw.png';
     }
     await _db.insertSticker(
       StickersCompanion.insert(
@@ -104,19 +120,41 @@ class StickerRepository {
         source: Value(source),
         linkedItemId: Value(linkedItemId),
         audioPath: Value(audioPath),
+        rawPath: Value(rawPath),
+        rawIsCutout: Value(rawIsCutout),
+        borderColor: Value(borderColorHex),
         createdAt: DateTime.now(),
       ),
     );
     return id;
   }
 
+  /// フチの色を変えてシール画像を作り直す。
+  /// 素材(rawPath)が無いシール(旧作成分・交換で受領分)はfalse。
+  Future<bool> recolorBorder(Sticker sticker, Color color) async {
+    final raw = sticker.rawPath;
+    if (raw == null) return false;
+    final bytes = await StickerFactory.makeSticker(
+      sourcePath: resolve(raw),
+      texture: sticker.texture,
+      isCutout: sticker.rawIsCutout,
+      borderColor: color,
+    );
+    final file = File(resolve(sticker.imagePath));
+    await file.writeAsBytes(bytes);
+    await FileImage(file).evict();
+    final hex =
+        '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+    await _db.updateStickerBorder(sticker.id, hex);
+    return true;
+  }
+
   Future<void> deleteSticker(Sticker sticker) async {
     await _db.deleteSticker(sticker.id);
-    final file = File(resolve(sticker.imagePath));
-    if (await file.exists()) await file.delete();
-    if (sticker.audioPath != null) {
-      final audio = File(resolve(sticker.audioPath!));
-      if (await audio.exists()) await audio.delete();
+    for (final rel in [sticker.imagePath, sticker.audioPath, sticker.rawPath]) {
+      if (rel == null) continue;
+      final file = File(resolve(rel));
+      if (await file.exists()) await file.delete();
     }
   }
 }

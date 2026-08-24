@@ -53,6 +53,10 @@ class Stickers extends Table {
       textEnum<CardSource>().withDefault(Constant(CardSource.self.name))();
   TextColumn get linkedItemId => text().nullable()(); // 紐付けたカルチャーカードのid
   TextColumn get audioPath => text().nullable()(); // ボイス(相対パス)
+  TextColumn get rawPath => text().nullable()(); // 加工前素材(フチ色変更用)
+  BoolColumn get rawIsCutout =>
+      boolean().withDefault(const Constant(false))(); // 素材が切り抜き済みか
+  TextColumn get borderColor => text().nullable()(); // 現在のフチ色(hex)
   DateTimeColumn get createdAt => dateTime()();
 
   @override
@@ -112,7 +116,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -127,6 +131,11 @@ class AppDatabase extends _$AppDatabase {
       }
       if (from < 5 && from >= 3) {
         await m.addColumn(stickers, stickers.audioPath);
+      }
+      if (from < 6 && from >= 3) {
+        await m.addColumn(stickers, stickers.rawPath);
+        await m.addColumn(stickers, stickers.rawIsCutout);
+        await m.addColumn(stickers, stickers.borderColor);
       }
       if (from < 4) {
         await m.createTable(pageElements);
@@ -202,6 +211,11 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> insertSticker(StickersCompanion entry) =>
       into(stickers).insert(entry);
+
+  Future<void> updateStickerBorder(String id, String colorHex) =>
+      (update(stickers)..where((t) => t.id.equals(id))).write(
+        StickersCompanion(borderColor: Value(colorHex)),
+      );
 
   Future<void> deleteSticker(String id) async {
     await (delete(pageElements)..where((t) => t.refId.equals(id))).go();

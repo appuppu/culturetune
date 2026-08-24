@@ -219,9 +219,7 @@ Future<void> importStickerFromGallery(
       (meta['kind'] != 'culturetune_sticker' &&
           meta['kind'] != 'culturetune_page')) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('しーるちょうのシールじゃないみたい(スクショではなく元のPNGを保存してね)'),
-      ),
+      const SnackBar(content: Text('しーるちょうのシールじゃないみたい(スクショではなく元のPNGを保存してね)')),
     );
     return;
   }
