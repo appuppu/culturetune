@@ -22,6 +22,11 @@ class BlePresenceTransport implements BeamTransport {
 
   /// 発信状態の見える化(ok / error: ... / state=n)。UIの診断表示用
   final ValueNotifier<String> advertiseInfo = ValueNotifier('');
+
+  /// スキャン診断: 周囲に見えているBLE機器数(しーるちょー以外も含む)
+  final ValueNotifier<int> nearbyDeviceCount = ValueNotifier(0);
+
+  final _allSeen = <String>{};
   final _peersController = StreamController<List<BeamPeer>>.broadcast();
   final _statusController = StreamController<BeamPresenceStatus>.broadcast();
 
@@ -104,13 +109,11 @@ class BlePresenceTransport implements BeamTransport {
         if (kDebugMode) debugPrint('[ble] advertise failed: $e');
       }
 
-      // 周囲のしーるちょーユーザーをスキャン
+      // 周囲のしーるちょーユーザーをスキャン。
+      // OSのサービスフィルタは環境により取りこぼすことがあるため、
+      // 全デバイスをスキャンしてアプリ側でUUID選別する
       _scanSub = FlutterBluePlus.onScanResults.listen(_onResults);
-      await FlutterBluePlus.startScan(
-        withServices: [_serviceGuid],
-        continuousUpdates: true,
-        removeIfGone: const Duration(seconds: 8),
-      );
+      await FlutterBluePlus.startScan(continuousUpdates: true);
 
       // 10秒見えない相手をリストから掃除
       _sweepTimer = Timer.periodic(const Duration(seconds: 3), (_) => _sweep());
@@ -125,15 +128,15 @@ class BlePresenceTransport implements BeamTransport {
     }
   }
 
+  bool _isShirucho(ScanResult r) => r.advertisementData.serviceUuids.any(
+    (g) => g.str128.toLowerCase().contains('c71e'),
+  );
+
   void _onResults(List<ScanResult> results) {
-    if (kDebugMode && results.isNotEmpty) {
-      debugPrint(
-        '[ble] scan results=${results.length} '
-        'names=${[for (final r in results) r.advertisementData.advName]}',
-      );
-    }
     final now = DateTime.now();
     for (final r in results) {
+      _allSeen.add(r.device.remoteId.str);
+      if (!_isShirucho(r)) continue;
       final name = r.advertisementData.advName;
       _seen[r.device.remoteId.str] = (
         peer: BeamPeer(
@@ -142,6 +145,9 @@ class BlePresenceTransport implements BeamTransport {
         ),
         at: now,
       );
+    }
+    if (_allSeen.length != nearbyDeviceCount.value) {
+      nearbyDeviceCount.value = _allSeen.length;
     }
     _emit();
   }
@@ -173,6 +179,8 @@ class BlePresenceTransport implements BeamTransport {
       }
     } catch (_) {}
     _seen.clear();
+    _allSeen.clear();
+    nearbyDeviceCount.value = 0;
     if (!_peersController.isClosed) _peersController.add(const []);
     if (!_statusController.isClosed) {
       _statusController.add(BeamPresenceStatus.idle);
