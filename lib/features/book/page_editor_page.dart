@@ -55,6 +55,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
   late String? _bgColorHex = widget.page.bgColor;
   late String? _bgImagePath = widget.page.bgImagePath;
   late String? _pageBorderHex = widget.page.borderColor;
+  late bool _showTitle = widget.page.showTitle;
 
   double _startScale = 1;
   double _startRotation = 0;
@@ -121,6 +122,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
         bgColor: Value(_bgColorHex),
         bgImagePath: Value(_bgImagePath),
         borderColor: Value(_pageBorderHex),
+        showTitle: Value(_showTitle),
         createdAt: widget.page.createdAt,
         updatedAt: DateTime.now(),
       ),
@@ -358,30 +360,48 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
 
   Future<void> _editTitle() async {
     final controller = TextEditingController(text: _title);
-    final result = await showDialog<String>(
+    var show = _showTitle;
+    final result = await showDialog<(String, bool)>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('シール帳のタイトル'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLength: 20,
-          decoration: const InputDecoration(hintText: '例: 8月の推し記録'),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('シール帳のタイトル'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                autofocus: true,
+                maxLength: 20,
+                decoration: const InputDecoration(hintText: '例: 8月の推し記録'),
+              ),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('シール帳の上に表示', style: TextStyle(fontSize: 14)),
+                value: show,
+                onChanged: (v) => setDialogState(() => show = v),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('キャンセル'),
+            ),
+            FilledButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext, (controller.text, show)),
+              child: const Text('保存'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('キャンセル'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, controller.text),
-            child: const Text('保存'),
-          ),
-        ],
       ),
     );
     if (result == null || !mounted) return;
-    setState(() => _title = result.trim());
+    setState(() {
+      _title = result.$1.trim();
+      _showTitle = result.$2;
+    });
     await _persistPage();
   }
 

@@ -634,7 +634,7 @@ class PageCanvas extends ConsumerWidget {
             },
           ),
           // タイトル: 左上に大きめ表示(背景に埋もれないよう影付き)
-          if (page.title.isNotEmpty)
+          if (page.title.isNotEmpty && page.showTitle)
             Positioned.fill(
               child: LayoutBuilder(
                 builder: (context, constraints) => Align(
