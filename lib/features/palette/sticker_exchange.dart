@@ -71,7 +71,7 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
   await file.writeAsBytes(embedded);
   await Share.shareXFiles([
     XFile(file.path),
-  ], text: 'シールをあげる! しーるちょうの「取り込む」で使えるよ');
+  ], text: 'シールをあげる! しーるちょうの交換タブ「受け取る」で使えるよ');
 }
 
 /// シール帳ページを送る。
@@ -200,7 +200,7 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
   await file.writeAsBytes(embedded);
   await Share.shareXFiles([
     XFile(file.path),
-  ], text: 'シール帳のページをあげる! しーるちょうの「取り込む」で読めるよ');
+  ], text: 'シール帳のページをあげる! しーるちょうの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
 }
 
 /// ギャラリーの画像からシール/ページを取り込む(共有シートで受け取ったPNG)。
@@ -241,7 +241,7 @@ Future<void> importStickerFromGallery(
       SnackBar(
         content: Text(
           restored
-              ? '$creatorName のページをシール帳に追加したよ(再生もできるよ)'
+              ? '$creatorName のページをシール帳に追加したよ。追いデコして送り返すと交換日記になるよ'
               : '$creatorName のページを画像として追加したよ',
         ),
       ),

@@ -391,7 +391,7 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                   const Spacer(),
                   LabelChip(
                     icon: Icons.download_rounded,
-                    label: '取り込む',
+                    label: '受け取る',
                     onTap: () => importStickerFromGallery(context, ref),
                   ),
                   LabelChip(

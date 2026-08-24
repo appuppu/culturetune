@@ -113,7 +113,7 @@ class _UrlPostPageState extends ConsumerState<UrlPostPage> {
               onSubmitted: (_) => _fetch(),
               decoration: InputDecoration(
                 hintText: c == CultureCategory.music
-                    ? 'YouTube / YouTube MusicのURL'
+                    ? 'YouTube / Spotify / Apple MusicのURL'
                     : 'YouTubeなど動画のURL',
                 filled: true,
                 fillColor: CTColors.surface,

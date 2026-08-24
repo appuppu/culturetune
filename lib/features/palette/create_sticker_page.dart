@@ -17,9 +17,11 @@ import '../../core/stickers/cutout_service.dart';
 import '../../core/stickers/sticker_factory.dart';
 import '../../core/theme/tokens.dart';
 import '../../core/widgets/candy_button.dart';
+import '../../core/widgets/culture_picker_sheet.dart';
 import '../../core/widgets/sticker_image.dart';
-import '../../core/widgets/thumb_image.dart';
 import '../beam/beam_profile_provider.dart';
+import 'batch_create_page.dart';
+import 'message_note.dart';
 
 /// シール作成: 写真選択 → 自動切り抜き → 質感選択 → カルチャー紐付け → 保存
 class CreateStickerPage extends ConsumerStatefulWidget {
@@ -33,6 +35,7 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
   String? _photoPath; // 元写真
   String? _cutoutPath; // 切り抜き済み透過PNG(null=切り抜き不可)
   bool _cutoutTried = false;
+  bool _isNote = false; // メッセージシール(切り抜き対象外)
   StickerTexture _texture = StickerTexture.normal;
   Color _borderColor = Colors.white;
 
@@ -104,6 +107,7 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
       _photoPath = file.path;
       _cutoutPath = null;
       _cutoutTried = false;
+      _isNote = false;
       _previewCache.clear();
       _processing = true;
     });
@@ -151,63 +155,9 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
   }
 
   Future<void> _pickLinkedItem() async {
-    final items = await ref.read(databaseProvider).watchItems().first;
-    if (!mounted) return;
-    if (items.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('カードタブから先にカルチャーを登録してね')));
-      return;
-    }
-    final selected = await showModalBottomSheet<CultureItem>(
-      context: context,
-      backgroundColor: CTColors.bgBase,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(CTRadius.sheet),
-        ),
-      ),
-      builder: (sheetContext) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
-              child: Text(
-                'どのカルチャーを埋め込む?',
-                style: TextStyle(fontWeight: FontWeight.w800),
-              ),
-            ),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: items.length,
-                itemBuilder: (_, i) {
-                  final item = items[i];
-                  return ListTile(
-                    leading: SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: ThumbImage(item: item),
-                      ),
-                    ),
-                    title: Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    subtitle: Text(item.category.labelJa),
-                    onTap: () => Navigator.pop(sheetContext, item),
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+    final selected = await showCulturePickerSheet(
+      context,
+      ref.read(databaseProvider),
     );
     if (selected != null && mounted) {
       setState(() => _linkedItem = selected);
@@ -301,7 +251,7 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (_cutoutTried && _cutoutPath == null)
+                  if (!_isNote && _cutoutTried && _cutoutPath == null)
                     Text(
                       '被写体を切り抜けなかったので角丸シールにしたよ',
                       style: TextStyle(fontSize: 11, color: CTColors.textSub),
@@ -309,7 +259,7 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
                   TextButton.icon(
                     onPressed: () => _showPickSheet(),
                     icon: const Icon(Icons.refresh_rounded, size: 16),
-                    label: const Text('写真を選び直す'),
+                    label: Text(_isNote ? 'つくり直す' : '写真を選び直す'),
                   ),
                 ],
               ),
@@ -555,9 +505,176 @@ class _CreateStickerPageState extends ConsumerState<CreateStickerPage> {
                 _pick(ImageSource.gallery);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.burst_mode_rounded),
+              title: const Text('まとめてつくる'),
+              subtitle: const Text(
+                '複数の写真を一気にシール化(旅行のご飯写真などに)',
+                style: TextStyle(fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickMulti();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.sticky_note_2_rounded),
+              title: const Text('メッセージシール'),
+              subtitle: const Text(
+                'ひとことをメモ紙風シールに(寄せ書き・交換日記に)',
+                style: TextStyle(fontSize: 12),
+              ),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _createMessageNote();
+              },
+            ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _pickMulti() async {
+    final files = await ImagePicker().pickMultiImage(
+      maxWidth: 1600,
+      imageQuality: 92,
+    );
+    if (files.isEmpty || !mounted) return;
+    if (files.length == 1) {
+      // 1枚だけならいつもの流れ(質感プレビューを見ながら作れる)
+      setState(() {
+        _photoPath = files.first.path;
+        _cutoutPath = null;
+        _cutoutTried = false;
+        _isNote = false;
+        _previewCache.clear();
+        _processing = true;
+      });
+      final cutout = await CutoutService.cutoutSubject(files.first.path);
+      if (!mounted) return;
+      setState(() {
+        _cutoutPath = cutout;
+        _cutoutTried = true;
+      });
+      await _process();
+      return;
+    }
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute(
+        builder: (_) =>
+            BatchCreatePage(photoPaths: [for (final f in files) f.path]),
+      ),
+    );
+  }
+
+  Future<void> _createMessageNote() async {
+    final result = await showDialog<(String, Color)>(
+      context: context,
+      builder: (dialogContext) => const _MessageNoteDialog(),
+    );
+    if (result == null || !mounted) return;
+    setState(() => _processing = true);
+    final notePath = await renderMessageNote(text: result.$1, bg: result.$2);
+    if (!mounted) return;
+    setState(() {
+      _photoPath = notePath;
+      _cutoutPath = null;
+      _cutoutTried = true;
+      _isNote = true;
+      _previewCache.clear();
+    });
+    await _process();
+  }
+}
+
+/// メッセージシールの入力: ひとこと+メモ紙の色
+class _MessageNoteDialog extends StatefulWidget {
+  const _MessageNoteDialog();
+
+  @override
+  State<_MessageNoteDialog> createState() => _MessageNoteDialogState();
+}
+
+class _MessageNoteDialogState extends State<_MessageNoteDialog> {
+  final _controller = TextEditingController();
+  Color _bg = Colors.white;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: CTColors.bgBase,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(CTRadius.sheet),
+      ),
+      title: const Text('メッセージシール', style: TextStyle(fontSize: 16)),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: _controller,
+              autofocus: true,
+              maxLength: 60,
+              maxLines: 3,
+              minLines: 1,
+              decoration: InputDecoration(
+                hintText: 'たんじょうびおめでとう! など',
+                filled: true,
+                fillColor: CTColors.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(CTRadius.card),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                for (final color in [Colors.white, ...CTColors.moodPalette])
+                  GestureDetector(
+                    onTap: () => setState(() => _bg = color),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 6),
+                      width: 26,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _bg == color
+                              ? CTColors.textMain
+                              : CTColors.textSub.withValues(alpha: 0.25),
+                          width: _bg == color ? 2.5 : 1,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('やめる'),
+        ),
+        FilledButton(
+          onPressed: _controller.text.trim().isEmpty
+              ? null
+              : () => Navigator.pop(context, (_controller.text.trim(), _bg)),
+          child: const Text('シールにする'),
+        ),
+      ],
     );
   }
 }

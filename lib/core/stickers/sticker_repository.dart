@@ -37,12 +37,14 @@ class StickerRepository {
     String? creatorColor,
     String? linkedItemId,
     String? audioSourcePath,
+    Color borderColor = const Color(0xFFFFFFFF),
   }) async {
     final cutoutPath = await CutoutService.cutoutSubject(photoPath);
     final bytes = await StickerFactory.makeSticker(
       sourcePath: cutoutPath ?? photoPath,
       texture: texture,
       isCutout: cutoutPath != null,
+      borderColor: borderColor,
     );
     return _save(
       bytes: bytes,
@@ -54,8 +56,14 @@ class StickerRepository {
       audioBytes: audioSourcePath != null
           ? await File(audioSourcePath).readAsBytes()
           : null,
+      rawSourcePath: cutoutPath ?? photoPath,
+      rawIsCutout: cutoutPath != null,
+      borderColorHex: hexOfColor(borderColor),
     );
   }
+
+  static String hexOfColor(Color color) =>
+      '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   /// 加工済みシール画像(交換で受け取ったもの等)をそのまま登録する
   Future<String> importProcessed({
@@ -143,9 +151,7 @@ class StickerRepository {
     final file = File(resolve(sticker.imagePath));
     await file.writeAsBytes(bytes);
     await FileImage(file).evict();
-    final hex =
-        '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
-    await _db.updateStickerBorder(sticker.id, hex);
+    await _db.updateStickerBorder(sticker.id, hexOfColor(color));
     return true;
   }
 

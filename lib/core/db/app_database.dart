@@ -217,6 +217,11 @@ class AppDatabase extends _$AppDatabase {
         StickersCompanion(borderColor: Value(colorHex)),
       );
 
+  Future<void> updateStickerLink(String id, String? linkedItemId) =>
+      (update(stickers)..where((t) => t.id.equals(id))).write(
+        StickersCompanion(linkedItemId: Value(linkedItemId)),
+      );
+
   Future<void> deleteSticker(String id) async {
     await (delete(pageElements)..where((t) => t.refId.equals(id))).go();
     await (delete(stickers)..where((t) => t.id.equals(id))).go();

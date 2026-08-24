@@ -11,6 +11,7 @@ import '../detail/culture_modal.dart';
 import 'create_sticker_page.dart';
 import '../../core/stickers/voice_player.dart';
 import '../../core/widgets/border_color_sheet.dart';
+import '../../core/widgets/culture_picker_sheet.dart';
 import 'sticker_exchange.dart';
 
 /// シール素材のグリッド(シールタブに埋め込まれる)
@@ -62,7 +63,7 @@ class PaletteBody extends ConsumerWidget {
               itemBuilder: (_, i) => _StickerTile(sticker: list[i]),
             ),
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(child: Text('エラー: \$e')),
+      error: (e, _) => Center(child: Text('エラー: $e')),
     );
   }
 }
@@ -226,7 +227,55 @@ Future<void> showStickerSheet(
                 ),
               ),
             ],
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
+            // カードの後付け(店の場所・曲などをタップで開けるようにする)
+            Consumer(
+              builder: (context, sheetRef, _) => Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final item = await showCulturePickerSheet(
+                        context,
+                        sheetRef.read(databaseProvider),
+                      );
+                      if (item == null) return;
+                      await sheetRef
+                          .read(databaseProvider)
+                          .updateStickerLink(sticker.id, item.id);
+                      if (sheetContext.mounted) Navigator.pop(sheetContext);
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('「${item.title}」を埋め込んだよ(タップで開けるよ)'),
+                          ),
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.link_rounded, size: 18),
+                    label: Text(
+                      sticker.linkedItemId == null ? 'カードを埋め込む' : '埋め込みカードを変える',
+                    ),
+                  ),
+                  if (sticker.linkedItemId != null)
+                    IconButton(
+                      tooltip: '埋め込みを外す',
+                      onPressed: () async {
+                        await sheetRef
+                            .read(databaseProvider)
+                            .updateStickerLink(sticker.id, null);
+                        if (sheetContext.mounted) Navigator.pop(sheetContext);
+                      },
+                      icon: Icon(
+                        Icons.link_off_rounded,
+                        size: 20,
+                        color: CTColors.textSub,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
             _LinkedCultureButton(sticker: sticker, sheetContext: sheetContext),
             const SizedBox(height: 8),
             Row(

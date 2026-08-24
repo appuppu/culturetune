@@ -16,7 +16,6 @@ import '../map/food_map_page.dart';
 import '../mix/mix_controller.dart';
 import '../post/post_flow.dart';
 import '../settings/settings_page.dart';
-import '../wrap/wrap_page.dart';
 
 class VaultPage extends ConsumerWidget {
   const VaultPage({super.key, this.embedded = false});
@@ -48,14 +47,6 @@ class VaultPage extends ConsumerWidget {
                   ),
                 const Spacer(),
                 const _FoodMapButton(),
-                LabelChip(
-                  icon: Icons.auto_awesome_rounded,
-                  label: '今月のレポ',
-                  color: CTColors.lemon,
-                  onTap: () => Navigator.of(
-                    context,
-                  ).push(MaterialPageRoute(builder: (_) => const WrapPage())),
-                ),
                 const _MixButton(),
                 if (!embedded)
                   IconButton(

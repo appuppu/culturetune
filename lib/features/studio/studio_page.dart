@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/theme/tokens.dart';
-import '../../core/widgets/label_chip.dart';
 import '../palette/create_sticker_page.dart';
 import '../palette/palette_page.dart';
 import '../post/post_flow.dart';
-import '../palette/sticker_exchange.dart';
 import '../settings/settings_page.dart';
 import '../vault/vault_page.dart';
 
@@ -66,12 +64,6 @@ class StudioPage extends ConsumerWidget {
                     ),
                   ),
                 const Spacer(),
-                if (segment == 0)
-                  LabelChip(
-                    icon: Icons.download_rounded,
-                    label: '取り込む',
-                    onTap: () => importStickerFromGallery(context, ref),
-                  ),
                 IconButton(
                   visualDensity: VisualDensity.compact,
                   onPressed: () => _showCreateSheet(context),
