@@ -42,7 +42,7 @@ class VaultPage extends ConsumerWidget {
               children: [
                 if (!embedded)
                   Text(
-                    'しーるちょう',
+                    'しーるちょー',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w800,

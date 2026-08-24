@@ -71,7 +71,7 @@ Future<void> shareStickerWithMeta(WidgetRef ref, Sticker sticker) async {
   await file.writeAsBytes(embedded);
   await Share.shareXFiles([
     XFile(file.path),
-  ], text: 'シールをあげる! しーるちょうの交換タブ「受け取る」で使えるよ');
+  ], text: 'シールをあげる! しーるちょーの交換タブ「受け取る」で使えるよ');
 }
 
 /// シール帳ページを送る。
@@ -200,7 +200,7 @@ Future<void> sharePageWithMeta(WidgetRef ref, StickerPage page) async {
   await file.writeAsBytes(embedded);
   await Share.shareXFiles([
     XFile(file.path),
-  ], text: 'シール帳のページをあげる! しーるちょうの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
+  ], text: 'シール帳のページをあげる! しーるちょーの交換タブ「受け取る」で読めるよ。追いデコして返してくれてもいいよ');
 }
 
 /// ギャラリーの画像からシール/ページを取り込む(共有シートで受け取ったPNG)。
@@ -219,7 +219,7 @@ Future<void> importStickerFromGallery(
       (meta['kind'] != 'culturetune_sticker' &&
           meta['kind'] != 'culturetune_page')) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('しーるちょうのシールじゃないみたい(スクショではなく元のPNGを保存してね)')),
+      const SnackBar(content: Text('しーるちょーのシールじゃないみたい(スクショではなく元のPNGを保存してね)')),
     );
     return;
   }

@@ -195,11 +195,11 @@ Future<String?> exportBookBackup(WidgetRef ref) async {
   final now = DateTime.now();
   final stamp =
       '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  final out = File('${dir.path}/しーるちょうバックアップ_$stamp.zip');
+  final out = File('${dir.path}/しーるちょーバックアップ_$stamp.zip');
   await out.writeAsBytes(zipBytes);
   await Share.shareXFiles([
     XFile(out.path),
-  ], text: 'しーるちょうのバックアップ($stamp)。設定→「バックアップを読み込む」で復元できるよ');
+  ], text: 'しーるちょーのバックアップ($stamp)。設定→「バックアップを読み込む」で復元できるよ');
   return null;
 }
 
@@ -220,7 +220,7 @@ Future<String> importBookBackup(WidgetRef ref) async {
   try {
     archive = ZipDecoder().decodeBytes(await File(path).readAsBytes());
   } catch (_) {
-    return 'このファイルは読み込めなかったよ(しーるちょうのバックアップZIPを選んでね)';
+    return 'このファイルは読み込めなかったよ(しーるちょーのバックアップZIPを選んでね)';
   }
 
   final entries = <String, List<int>>{};
@@ -231,7 +231,7 @@ Future<String> importBookBackup(WidgetRef ref) async {
   if (dataBytes == null) return 'バックアップのデータが見つからなかったよ';
   final data = jsonDecode(utf8.decode(dataBytes));
   if (data is! Map<String, dynamic> || data['kind'] != 'shirucho_backup') {
-    return 'しーるちょうのバックアップじゃないみたい';
+    return 'しーるちょーのバックアップじゃないみたい';
   }
 
   final db = ref.read(databaseProvider);

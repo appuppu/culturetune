@@ -633,7 +633,7 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
       final dir = await getTemporaryDirectory();
       final file = File('${dir.path}/deco_page_${widget.page.id}.png');
       await file.writeAsBytes(bytes!.buffer.asUint8List());
-      await Share.shareXFiles([XFile(file.path)], text: '#しーるちょう');
+      await Share.shareXFiles([XFile(file.path)], text: '#しーるちょー');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(
