@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
 import '../../core/theme/tokens.dart';
+import '../settings/theme_provider.dart';
 import 'mix_controller.dart';
 
 /// 画面下部に常駐するキャンディ型ミニプレイヤー。
@@ -80,6 +81,8 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 
   @override
   Widget build(BuildContext context) {
+    // テーマ変更に追従させる(constの親からは再ビルドされないため)
+    ref.watch(themeProvider);
     final mix = ref.watch(mixControllerProvider);
     _sync(mix);
 
@@ -104,7 +107,13 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
       decoration: BoxDecoration(
         color: ytDark,
         borderRadius: BorderRadius.circular(CTRadius.card),
-        boxShadow: ctCardShadow,
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black38,
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
