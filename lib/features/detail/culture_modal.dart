@@ -38,8 +38,10 @@ Future<void> openCultureItem(
 ) async {
   final videoId = _videoIdOf(item);
 
-  // 音楽はタップ=再生。ミニプレイヤーが下からスッと出る
-  if (item.category == CultureCategory.music && videoId != null) {
+  // 音楽・動画はタップ=再生。下からYouTube Music風プレイヤーが出る
+  if ((item.category == CultureCategory.music ||
+          item.category == CultureCategory.video) &&
+      videoId != null) {
     HapticFeedback.lightImpact();
     ref.read(mixControllerProvider.notifier).playSingle(item);
     return;
