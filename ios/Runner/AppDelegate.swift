@@ -1,3 +1,4 @@
+import CoreBluetooth
 import Flutter
 import MapKit
 import UIKit
@@ -119,6 +120,68 @@ import Vision
       }
     }
 
+    // BLEアドバタイズ(レーダー用)。プラグインはpoweredOn前に発信して
+    // 失敗するため、電源ONを待ってから発信する自前実装を使う
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let bleChannel = FlutterMethodChannel(
+        name: "culturetune/ble_advertise",
+        binaryMessenger: controller.binaryMessenger
+      )
+      bleChannel.setMethodCallHandler { [weak self] call, result in
+        switch call.method {
+        case "start":
+          guard let args = call.arguments as? [String: Any],
+            let name = args["name"] as? String,
+            let uuid = args["uuid"] as? String
+          else {
+            result(FlutterMethodNotImplemented)
+            return
+          }
+          self?.bleAdvertiser.start(name: name, uuid: uuid)
+          result(true)
+        case "stop":
+          self?.bleAdvertiser.stop()
+          result(true)
+        default:
+          result(FlutterMethodNotImplemented)
+        }
+      }
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  private lazy var bleAdvertiser = BleAdvertiser()
+}
+
+/// CBPeripheralManagerがpoweredOnになるのを待ってからアドバタイズする
+class BleAdvertiser: NSObject, CBPeripheralManagerDelegate {
+  private var manager: CBPeripheralManager?
+  private var pending: [String: Any]?
+
+  func start(name: String, uuid: String) {
+    pending = [
+      CBAdvertisementDataLocalNameKey: name,
+      CBAdvertisementDataServiceUUIDsKey: [CBUUID(string: uuid)],
+    ]
+    if manager == nil {
+      manager = CBPeripheralManager(delegate: self, queue: nil)
+    }
+    advertiseIfReady()
+  }
+
+  func stop() {
+    pending = nil
+    manager?.stopAdvertising()
+  }
+
+  private func advertiseIfReady() {
+    guard let manager, manager.state == .poweredOn, let pending else { return }
+    manager.stopAdvertising()
+    manager.startAdvertising(pending)
+  }
+
+  func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
+    advertiseIfReady()
   }
 }

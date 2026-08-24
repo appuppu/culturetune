@@ -31,31 +31,39 @@ class LinkReceiver {
   void dispose() => _sub?.cancel();
 
   Future<void> _handle(WidgetRef ref, Uri uri) async {
-    final card = CardLink.parse(uri);
     final context = _navigatorKey.currentContext;
-    if (card == null || context == null || !context.mounted) return;
-
-    final accepted = await showModalBottomSheet<bool>(
-      context: context,
-      backgroundColor: CTColors.bgBase,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(CTRadius.sheet),
-        ),
-      ),
-      builder: (sheetContext) => _AcceptSheet(card: card),
-    );
-    if (accepted == true) {
-      await ref.read(itemRepositoryProvider).saveBeamCard(card);
-      final ctx = _navigatorKey.currentContext;
-      if (ctx != null && ctx.mounted) {
-        HapticFeedback.mediumImpact();
-        ScaffoldMessenger.of(ctx).showSnackBar(
-          SnackBar(content: Text('${card.senderName} の「${card.title}」を受け取ったよ')),
-        );
-      }
-    }
+    if (context == null || !context.mounted) return;
+    await receiveCardFromUri(context, ref, uri);
   }
+}
+
+/// カードURI(配布リンク/QRの中身)を受け取り確認つきで保存する。
+/// リンク受信とQR読み取りの両方から使う。戻り値: 保存したか。
+Future<bool> receiveCardFromUri(
+  BuildContext context,
+  WidgetRef ref,
+  Uri uri,
+) async {
+  final card = CardLink.parse(uri);
+  if (card == null || !context.mounted) return false;
+
+  final accepted = await showModalBottomSheet<bool>(
+    context: context,
+    backgroundColor: CTColors.bgBase,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(CTRadius.sheet)),
+    ),
+    builder: (sheetContext) => _AcceptSheet(card: card),
+  );
+  if (accepted != true) return false;
+  await ref.read(itemRepositoryProvider).saveBeamCard(card);
+  if (context.mounted) {
+    HapticFeedback.mediumImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${card.senderName} の「${card.title}」を受け取ったよ')),
+    );
+  }
+  return true;
 }
 
 class _AcceptSheet extends StatelessWidget {

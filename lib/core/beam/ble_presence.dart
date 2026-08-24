@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_ble_peripheral/flutter_ble_peripheral.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
@@ -11,6 +13,10 @@ import 'beam_transport.dart';
 class BlePresenceTransport implements BeamTransport {
   /// Culture Tune識別用のService UUID(16bitショートコード 0xC71E を128bit化)
   static final Guid _serviceGuid = Guid('0000c71e-0000-1000-8000-00805f9b34fb');
+
+  static const _iosAdvertiseChannel = MethodChannel(
+    'culturetune/ble_advertise',
+  );
 
   final _peripheral = FlutterBlePeripheral();
   final _peersController = StreamController<List<BeamPeer>>.broadcast();
@@ -57,19 +63,30 @@ class BlePresenceTransport implements BeamTransport {
         return;
       }
 
-      // 自分をアドバタイズ(名前は載る範囲でベストエフォート)
+      // 自分をアドバタイズ(名前は載る範囲でベストエフォート)。
+      // iOSはプラグインがpoweredOn前に発信して失敗するため自前実装を使う
       try {
-        await _peripheral.start(
-          advertiseData: AdvertiseData(
-            serviceUuid: _serviceGuid.str128,
-            localName: me.advertiseName,
-          ),
-        );
-        if (kDebugMode) {
-          debugPrint(
-            '[ble] advertising=${await _peripheral.isAdvertising} '
-            'name=${me.advertiseName}',
+        if (Platform.isIOS) {
+          await _iosAdvertiseChannel.invokeMethod('start', {
+            'name': me.advertiseName,
+            'uuid': _serviceGuid.str128,
+          });
+          if (kDebugMode) {
+            debugPrint('[ble] ios advertise start name=${me.advertiseName}');
+          }
+        } else {
+          await _peripheral.start(
+            advertiseData: AdvertiseData(
+              serviceUuid: _serviceGuid.str128,
+              localName: me.advertiseName,
+            ),
           );
+          if (kDebugMode) {
+            debugPrint(
+              '[ble] advertising=${await _peripheral.isAdvertising} '
+              'name=${me.advertiseName}',
+            );
+          }
         }
       } catch (e) {
         // アドバタイズ不可端末でもスキャン(=相手を見つける側)は続行
@@ -138,7 +155,11 @@ class BlePresenceTransport implements BeamTransport {
       await FlutterBluePlus.stopScan();
     } catch (_) {}
     try {
-      await _peripheral.stop();
+      if (Platform.isIOS) {
+        await _iosAdvertiseChannel.invokeMethod('stop');
+      } else {
+        await _peripheral.stop();
+      }
     } catch (_) {}
     _seen.clear();
     if (!_peersController.isClosed) _peersController.add(const []);

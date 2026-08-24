@@ -18,6 +18,7 @@ import '../../core/widgets/label_chip.dart';
 import '../book/pages_page.dart';
 import '../palette/sticker_exchange.dart';
 import 'beam_profile_provider.dart';
+import 'qr_exchange.dart';
 
 final beamTransportProvider = Provider<BlePresenceTransport>((ref) {
   final transport = BlePresenceTransport();
@@ -495,12 +496,20 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                 ],
               ),
             ),
-            // 受け取り: LINE等で届いたPNGをここから読み込む
+            // 受け取り: QRその場交換と、LINE等で届いたPNGの読み込み
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  FilledButton.tonalIcon(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const QrExchangePage()),
+                    ),
+                    icon: const Icon(Icons.qr_code_2_rounded, size: 18),
+                    label: const Text('QRでその場交換(カード)'),
+                  ),
+                  const SizedBox(height: 8),
                   OutlinedButton.icon(
                     onPressed: () => importStickerFromGallery(context, ref),
                     icon: const Icon(Icons.download_rounded, size: 18),
