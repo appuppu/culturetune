@@ -419,8 +419,9 @@ class _PageEditorPageState extends ConsumerState<PageEditorPage> {
     });
     await _db.deletePageElement(r.element.id);
     await _db.touchPage(widget.page.id);
-    // パレットから削除済み(アーカイブ)のシールが不要になったら掃除
+    // 削除済み(アーカイブ)のシール・カードが不要になったら掃除
     await ref.read(stickerRepositoryProvider).cleanupArchived();
+    await ref.read(itemRepositoryProvider).cleanupArchived();
   }
 
   Future<void> _bringToFront() async {

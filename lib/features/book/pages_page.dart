@@ -17,6 +17,7 @@ import '../../core/stickers/page_renderer.dart';
 import '../beam/exchange_history.dart';
 import 'element_view.dart';
 import 'page_editor_page.dart';
+import '../../core/models/page_element_type.dart';
 import 'page_models.dart';
 
 /// シール帳タブ: 最新ページを全面に出し、縦スワイプでページをめくる。
@@ -145,8 +146,7 @@ class _PageGrid extends ConsumerWidget {
       ),
     );
     if (ok == true && context.mounted) {
-      await ref.read(databaseProvider).deletePage(page.id);
-      await ref.read(stickerRepositoryProvider).cleanupArchived();
+      await deletePageCompletely(ref, page);
     }
   }
 
@@ -332,8 +332,7 @@ class _PagePagerState extends ConsumerState<_PagePager> {
       ),
     );
     if (ok == true && mounted) {
-      await ref.read(databaseProvider).deletePage(page.id);
-      await ref.read(stickerRepositoryProvider).cleanupArchived();
+      await deletePageCompletely(ref, page);
     }
   }
 
@@ -499,6 +498,35 @@ Future<void> createNewPage(BuildContext context, WidgetRef ref) async {
 
 /// ページの描画(ページャー・一覧グリッド共通)。
 /// interactive=trueなら要素タップでその場再生。
+/// シール帳を完全に削除する(付随ファイルと不要アーカイブの掃除つき)
+Future<void> deletePageCompletely(WidgetRef ref, StickerPage page) async {
+  final db = ref.read(databaseProvider);
+  final docs = ref.read(documentsDirProvider);
+
+  // プロフィール要素の受信アバター画像を掃除
+  for (final el in await db.getPageElements(page.id)) {
+    if (el.type != PageElementType.profile) continue;
+    final avatar = ProfilePayload.fromJson(el.payload).avatarPath;
+    if (avatar == null) continue;
+    final path = resolveDocFile(docs, avatar);
+    if (path.contains('/avatars_recv/')) {
+      final file = File(path);
+      if (await file.exists()) await file.delete();
+    }
+  }
+  // 背景画像を掃除
+  final bg = page.bgImagePath;
+  if (bg != null) {
+    final file = File(resolveDocFile(docs, bg));
+    if (await file.exists()) await file.delete();
+  }
+
+  await db.deletePage(page.id);
+  // このシール帳だけが使っていたアーカイブ済みシール/カードを掃除
+  await ref.read(stickerRepositoryProvider).cleanupArchived();
+  await ref.read(itemRepositoryProvider).cleanupArchived();
+}
+
 /// シール帳を画像にしてカメラロールへ保存する
 Future<void> savePageToCameraRoll(
   BuildContext context,

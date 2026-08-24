@@ -232,6 +232,21 @@ class $CultureItemsTable extends CultureItems
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _archivedMeta = const VerificationMeta(
+    'archived',
+  );
+  @override
+  late final GeneratedColumn<bool> archived = GeneratedColumn<bool>(
+    'archived',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("archived" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -277,6 +292,7 @@ class $CultureItemsTable extends CultureItems
     beamFromColor,
     isFavorite,
     pinnedOrder,
+    archived,
     createdAt,
     consumedAt,
   ];
@@ -413,6 +429,12 @@ class $CultureItemsTable extends CultureItems
         ),
       );
     }
+    if (data.containsKey('archived')) {
+      context.handle(
+        _archivedMeta,
+        archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -524,6 +546,10 @@ class $CultureItemsTable extends CultureItems
         DriftSqlType.int,
         data['${effectivePrefix}pinned_order'],
       ),
+      archived: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}archived'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -570,6 +596,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
   final String? beamFromColor;
   final bool isFavorite;
   final int? pinnedOrder;
+  final bool archived;
   final DateTime createdAt;
   final DateTime? consumedAt;
   const CultureItem({
@@ -594,6 +621,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
     this.beamFromColor,
     required this.isFavorite,
     this.pinnedOrder,
+    required this.archived,
     required this.createdAt,
     this.consumedAt,
   });
@@ -655,6 +683,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
     if (!nullToAbsent || pinnedOrder != null) {
       map['pinned_order'] = Variable<int>(pinnedOrder);
     }
+    map['archived'] = Variable<bool>(archived);
     map['created_at'] = Variable<DateTime>(createdAt);
     if (!nullToAbsent || consumedAt != null) {
       map['consumed_at'] = Variable<DateTime>(consumedAt);
@@ -703,6 +732,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
       pinnedOrder: pinnedOrder == null && nullToAbsent
           ? const Value.absent()
           : Value(pinnedOrder),
+      archived: Value(archived),
       createdAt: Value(createdAt),
       consumedAt: consumedAt == null && nullToAbsent
           ? const Value.absent()
@@ -741,6 +771,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
       beamFromColor: serializer.fromJson<String?>(json['beamFromColor']),
       isFavorite: serializer.fromJson<bool>(json['isFavorite']),
       pinnedOrder: serializer.fromJson<int?>(json['pinnedOrder']),
+      archived: serializer.fromJson<bool>(json['archived']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       consumedAt: serializer.fromJson<DateTime?>(json['consumedAt']),
     );
@@ -774,6 +805,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
       'beamFromColor': serializer.toJson<String?>(beamFromColor),
       'isFavorite': serializer.toJson<bool>(isFavorite),
       'pinnedOrder': serializer.toJson<int?>(pinnedOrder),
+      'archived': serializer.toJson<bool>(archived),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'consumedAt': serializer.toJson<DateTime?>(consumedAt),
     };
@@ -801,6 +833,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
     Value<String?> beamFromColor = const Value.absent(),
     bool? isFavorite,
     Value<int?> pinnedOrder = const Value.absent(),
+    bool? archived,
     DateTime? createdAt,
     Value<DateTime?> consumedAt = const Value.absent(),
   }) => CultureItem(
@@ -827,6 +860,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
         : this.beamFromColor,
     isFavorite: isFavorite ?? this.isFavorite,
     pinnedOrder: pinnedOrder.present ? pinnedOrder.value : this.pinnedOrder,
+    archived: archived ?? this.archived,
     createdAt: createdAt ?? this.createdAt,
     consumedAt: consumedAt.present ? consumedAt.value : this.consumedAt,
   );
@@ -863,6 +897,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
       pinnedOrder: data.pinnedOrder.present
           ? data.pinnedOrder.value
           : this.pinnedOrder,
+      archived: data.archived.present ? data.archived.value : this.archived,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       consumedAt: data.consumedAt.present
           ? data.consumedAt.value
@@ -894,6 +929,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
           ..write('beamFromColor: $beamFromColor, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('pinnedOrder: $pinnedOrder, ')
+          ..write('archived: $archived, ')
           ..write('createdAt: $createdAt, ')
           ..write('consumedAt: $consumedAt')
           ..write(')'))
@@ -923,6 +959,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
     beamFromColor,
     isFavorite,
     pinnedOrder,
+    archived,
     createdAt,
     consumedAt,
   ]);
@@ -951,6 +988,7 @@ class CultureItem extends DataClass implements Insertable<CultureItem> {
           other.beamFromColor == this.beamFromColor &&
           other.isFavorite == this.isFavorite &&
           other.pinnedOrder == this.pinnedOrder &&
+          other.archived == this.archived &&
           other.createdAt == this.createdAt &&
           other.consumedAt == this.consumedAt);
 }
@@ -977,6 +1015,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
   final Value<String?> beamFromColor;
   final Value<bool> isFavorite;
   final Value<int?> pinnedOrder;
+  final Value<bool> archived;
   final Value<DateTime> createdAt;
   final Value<DateTime?> consumedAt;
   final Value<int> rowid;
@@ -1002,6 +1041,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
     this.beamFromColor = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.pinnedOrder = const Value.absent(),
+    this.archived = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.consumedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1028,6 +1068,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
     this.beamFromColor = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.pinnedOrder = const Value.absent(),
+    this.archived = const Value.absent(),
     required DateTime createdAt,
     this.consumedAt = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1057,6 +1098,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
     Expression<String>? beamFromColor,
     Expression<bool>? isFavorite,
     Expression<int>? pinnedOrder,
+    Expression<bool>? archived,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? consumedAt,
     Expression<int>? rowid,
@@ -1083,6 +1125,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
       if (beamFromColor != null) 'beam_from_color': beamFromColor,
       if (isFavorite != null) 'is_favorite': isFavorite,
       if (pinnedOrder != null) 'pinned_order': pinnedOrder,
+      if (archived != null) 'archived': archived,
       if (createdAt != null) 'created_at': createdAt,
       if (consumedAt != null) 'consumed_at': consumedAt,
       if (rowid != null) 'rowid': rowid,
@@ -1111,6 +1154,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
     Value<String?>? beamFromColor,
     Value<bool>? isFavorite,
     Value<int?>? pinnedOrder,
+    Value<bool>? archived,
     Value<DateTime>? createdAt,
     Value<DateTime?>? consumedAt,
     Value<int>? rowid,
@@ -1137,6 +1181,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
       beamFromColor: beamFromColor ?? this.beamFromColor,
       isFavorite: isFavorite ?? this.isFavorite,
       pinnedOrder: pinnedOrder ?? this.pinnedOrder,
+      archived: archived ?? this.archived,
       createdAt: createdAt ?? this.createdAt,
       consumedAt: consumedAt ?? this.consumedAt,
       rowid: rowid ?? this.rowid,
@@ -1213,6 +1258,9 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
     if (pinnedOrder.present) {
       map['pinned_order'] = Variable<int>(pinnedOrder.value);
     }
+    if (archived.present) {
+      map['archived'] = Variable<bool>(archived.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1249,6 +1297,7 @@ class CultureItemsCompanion extends UpdateCompanion<CultureItem> {
           ..write('beamFromColor: $beamFromColor, ')
           ..write('isFavorite: $isFavorite, ')
           ..write('pinnedOrder: $pinnedOrder, ')
+          ..write('archived: $archived, ')
           ..write('createdAt: $createdAt, ')
           ..write('consumedAt: $consumedAt, ')
           ..write('rowid: $rowid')
@@ -3649,6 +3698,7 @@ typedef $$CultureItemsTableCreateCompanionBuilder =
       Value<String?> beamFromColor,
       Value<bool> isFavorite,
       Value<int?> pinnedOrder,
+      Value<bool> archived,
       required DateTime createdAt,
       Value<DateTime?> consumedAt,
       Value<int> rowid,
@@ -3676,6 +3726,7 @@ typedef $$CultureItemsTableUpdateCompanionBuilder =
       Value<String?> beamFromColor,
       Value<bool> isFavorite,
       Value<int?> pinnedOrder,
+      Value<bool> archived,
       Value<DateTime> createdAt,
       Value<DateTime?> consumedAt,
       Value<int> rowid,
@@ -3794,6 +3845,11 @@ class $$CultureItemsTableFilterComposer
 
   ColumnFilters<int> get pinnedOrder => $composableBuilder(
     column: $table.pinnedOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get archived => $composableBuilder(
+    column: $table.archived,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3922,6 +3978,11 @@ class $$CultureItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get archived => $composableBuilder(
+    column: $table.archived,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4015,6 +4076,9 @@ class $$CultureItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get archived =>
+      $composableBuilder(column: $table.archived, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 
@@ -4076,6 +4140,7 @@ class $$CultureItemsTableTableManager
                 Value<String?> beamFromColor = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<int?> pinnedOrder = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime?> consumedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4101,6 +4166,7 @@ class $$CultureItemsTableTableManager
                 beamFromColor: beamFromColor,
                 isFavorite: isFavorite,
                 pinnedOrder: pinnedOrder,
+                archived: archived,
                 createdAt: createdAt,
                 consumedAt: consumedAt,
                 rowid: rowid,
@@ -4128,6 +4194,7 @@ class $$CultureItemsTableTableManager
                 Value<String?> beamFromColor = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<int?> pinnedOrder = const Value.absent(),
+                Value<bool> archived = const Value.absent(),
                 required DateTime createdAt,
                 Value<DateTime?> consumedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -4153,6 +4220,7 @@ class $$CultureItemsTableTableManager
                 beamFromColor: beamFromColor,
                 isFavorite: isFavorite,
                 pinnedOrder: pinnedOrder,
+                archived: archived,
                 createdAt: createdAt,
                 consumedAt: consumedAt,
                 rowid: rowid,

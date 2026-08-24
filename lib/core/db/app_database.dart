@@ -33,6 +33,9 @@ class CultureItems extends Table {
   TextColumn get beamFromColor => text().nullable()(); // 相手のアバターカラー(hex)
   BoolColumn get isFavorite => boolean().withDefault(const Constant(false))();
   IntColumn get pinnedOrder => integer().nullable()(); // ピン留め順(nullなら未ピン)
+  BoolColumn get archived => boolean().withDefault(
+    const Constant(false),
+  )(); // 一覧から削除済みだがシール帳/シールで使用中(参照が消えたら完全削除)
   DateTimeColumn get createdAt => dateTime()();
   DateTimeColumn get consumedAt => dateTime().nullable()(); // 観た/読んだ/食べた日
 
@@ -123,7 +126,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -156,6 +159,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 10 && from >= 3) {
         await m.addColumn(stickers, stickers.archived);
       }
+      if (from < 11) {
+        await m.addColumn(cultureItems, cultureItems.archived);
+      }
       if (from < 4) {
         await m.createTable(pageElements);
         if (from >= 3) {
@@ -178,6 +184,7 @@ class AppDatabase extends _$AppDatabase {
   /// 棚の一覧(ピン留め順→新着順)。categoryを渡すと絞り込み。
   Stream<List<CultureItem>> watchItems({CultureCategory? category}) {
     final query = select(cultureItems)
+      ..where((t) => t.archived.equals(false))
       ..orderBy([
         (t) => OrderingTerm(
           expression: t.pinnedOrder.isNotNull(),
@@ -203,6 +210,56 @@ class AppDatabase extends _$AppDatabase {
     return (update(cultureItems)..where((t) => t.id.equals(id))).write(
       CultureItemsCompanion(pinnedOrder: Value(order)),
     );
+  }
+
+  /// カードの参照数(シール帳のカード要素+シールの埋め込み)
+  Future<int> countItemUse(String id) async {
+    final elCount = pageElements.id.count();
+    final elRow =
+        await (selectOnly(pageElements)
+              ..addColumns([elCount])
+              ..where(
+                pageElements.refId.equals(id) &
+                    pageElements.type.equalsValue(PageElementType.card),
+              ))
+            .getSingle();
+    final stCount = stickers.id.count();
+    final stRow =
+        await (selectOnly(stickers)
+              ..addColumns([stCount])
+              ..where(stickers.linkedItemId.equals(id)))
+            .getSingle();
+    return (elRow.read(elCount) ?? 0) + (stRow.read(stCount) ?? 0);
+  }
+
+  Future<void> archiveItem(String id) =>
+      (update(cultureItems)..where((t) => t.id.equals(id))).write(
+        const CultureItemsCompanion(archived: Value(true)),
+      );
+
+  Future<void> unarchiveItem(String id) =>
+      (update(cultureItems)..where((t) => t.id.equals(id))).write(
+        const CultureItemsCompanion(archived: Value(false)),
+      );
+
+  Future<List<CultureItem>> archivedItems() =>
+      (select(cultureItems)..where((t) => t.archived.equals(true))).get();
+
+  /// 同一とみなせる既存カードを探す(交換の重複取り込み防止)
+  Future<CultureItem?> findSimilarItem({
+    required CultureCategory category,
+    required String title,
+    String? externalId,
+    String? url,
+  }) {
+    final query = select(cultureItems)
+      ..where((t) => t.category.equalsValue(category) & t.title.equals(title));
+    if (externalId != null) {
+      query.where((t) => t.externalId.equals(externalId));
+    } else if (url != null) {
+      query.where((t) => t.url.equals(url));
+    }
+    return (query..limit(1)).getSingleOrNull();
   }
 
   Future<CultureItem?> findItem(String id) =>

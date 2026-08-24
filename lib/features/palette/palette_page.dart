@@ -66,6 +66,8 @@ class PaletteBody extends ConsumerWidget {
     for (final s in targets) {
       await repo.deleteSticker(s);
     }
+    // シールが消えたことで参照ゼロになったアーカイブ済みカードを掃除
+    await ref.read(itemRepositoryProvider).cleanupArchived();
     ref.read(stickerSelectionProvider.notifier).state = null;
     if (context.mounted) {
       HapticFeedback.mediumImpact();
@@ -460,6 +462,7 @@ Future<void> showStickerSheet(
                       await ref
                           .read(stickerRepositoryProvider)
                           .deleteSticker(sticker);
+                      await ref.read(itemRepositoryProvider).cleanupArchived();
                       if (sheetContext.mounted) Navigator.pop(sheetContext);
                     },
                     icon: const Icon(Icons.delete_outline_rounded, size: 18),

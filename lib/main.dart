@@ -67,6 +67,11 @@ class _HomeShellState extends ConsumerState<HomeShell> {
       if (mounted) maybeShowOnboarding(context);
     });
     _linkReceiver.start(ref);
+    // 過去の削除で残ったアーカイブ済みシール/カードの保険掃除
+    Future(() async {
+      await ref.read(stickerRepositoryProvider).cleanupArchived();
+      await ref.read(itemRepositoryProvider).cleanupArchived();
+    });
   }
 
   @override

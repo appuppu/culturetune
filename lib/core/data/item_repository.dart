@@ -68,6 +68,19 @@ class ItemRepository {
 
   /// Beamで受け取ったカードを保存(source=beam)+交換履歴を記録
   Future<String> saveBeamCard(BeamCard card) async {
+    // 同じカードの再受け取りは既存を再利用する(重複防止)。
+    // 一覧から消していた(アーカイブ)場合は復活させる
+    final existing = await _db.findSimilarItem(
+      category: card.category,
+      title: card.title,
+      externalId: card.externalId,
+      url: card.url,
+    );
+    if (existing != null) {
+      if (existing.archived) await _db.unarchiveItem(existing.id);
+      return existing.id;
+    }
+
     final id = _uuid.v4();
     final thumbPath = await _importThumb(
       id: id,
@@ -152,12 +165,32 @@ class ItemRepository {
     );
   }
 
+  /// カードを削除する。シール帳やシールから参照されている場合は
+  /// 実体を残して一覧から隠すだけ(貼った作品を壊さない)。
   Future<void> deleteItem(CultureItem item) async {
+    final used = await _db.countItemUse(item.id);
+    if (used > 0) {
+      await _db.archiveItem(item.id);
+      return;
+    }
+    await _hardDelete(item);
+  }
+
+  Future<void> _hardDelete(CultureItem item) async {
     await _db.deleteItem(item.id);
     final path = item.thumbPath;
     if (path != null) {
       final file = File('${_documentsDir.path}/$path');
       if (await file.exists()) await file.delete();
+    }
+  }
+
+  /// アーカイブ済みで参照が無くなったカードを掃除する
+  Future<void> cleanupArchived() async {
+    for (final item in await _db.archivedItems()) {
+      if (await _db.countItemUse(item.id) == 0) {
+        await _hardDelete(item);
+      }
     }
   }
 

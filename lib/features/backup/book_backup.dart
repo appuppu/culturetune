@@ -75,6 +75,7 @@ Future<String?> exportBookBackup(WidgetRef ref) async {
       'beamFromColor': it.beamFromColor,
       'isFavorite': it.isFavorite,
       'pinnedOrder': it.pinnedOrder,
+      'archived': it.archived,
       'createdAt': _iso(it.createdAt),
       'consumedAt': _iso(it.consumedAt),
     });
@@ -287,6 +288,7 @@ Future<String> importBookBackup(WidgetRef ref) async {
             beamFromColor: drift.Value(raw['beamFromColor'] as String?),
             isFavorite: drift.Value(raw['isFavorite'] as bool? ?? false),
             pinnedOrder: drift.Value((raw['pinnedOrder'] as num?)?.toInt()),
+            archived: drift.Value(raw['archived'] as bool? ?? false),
             createdAt: _dt(raw['createdAt']),
             consumedAt: drift.Value(
               raw['consumedAt'] == null ? null : _dt(raw['consumedAt']),
