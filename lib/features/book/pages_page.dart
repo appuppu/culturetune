@@ -243,26 +243,30 @@ class _EmptyBook extends StatelessWidget {
                 height: 1.6,
               ),
             ),
-            const SizedBox(height: 16),
-            const UseCaseCard(
-              icon: Icons.favorite_rounded,
-              colorIndex: 0,
-              title: '推し活ログ',
-              body: '新曲やMV、出演作をカードにして集めよう。シール帳に貼ればタップでその場で再生できるよ',
+            const SizedBox(height: 12),
+            const UseCaseCarousel(
+              items: [
+                UseCaseItem(
+                  icon: Icons.favorite_rounded,
+                  colorIndex: 0,
+                  title: '推し活ログ',
+                  body: '新曲やMV、出演作をカードにして集めよう。シール帳に貼ればタップでその場で再生できるよ',
+                ),
+                UseCaseItem(
+                  icon: Icons.flight_takeoff_rounded,
+                  colorIndex: 5,
+                  title: '旅行のきろく',
+                  body: '旅の写真をまとめてシール化。ごはんの店カードはタップで地図がひらくよ',
+                ),
+                UseCaseItem(
+                  icon: Icons.swap_horiz_rounded,
+                  colorIndex: 1,
+                  title: '交換日記・寄せ書き',
+                  body: 'ともだちに渡して追いデコしてもらおう。メッセージシールやボイスで声も残せる',
+                ),
+              ],
             ),
-            const UseCaseCard(
-              icon: Icons.flight_takeoff_rounded,
-              colorIndex: 5,
-              title: '旅行のきろく',
-              body: '旅の写真をまとめてシール化。ごはんの店カードはタップで地図がひらくよ',
-            ),
-            const UseCaseCard(
-              icon: Icons.swap_horiz_rounded,
-              colorIndex: 1,
-              title: '交換日記・寄せ書き',
-              body: 'ともだちに渡して追いデコしてもらおう。メッセージシールやボイスで声も残せる',
-            ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 14),
             FilledButton.icon(
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 14),
@@ -351,59 +355,86 @@ class _PagePagerState extends ConsumerState<_PagePager> {
           },
           itemBuilder: (_, i) {
             final page = widget.pages[i];
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
-              child: Center(
-                child: AspectRatio(
-                  aspectRatio: 9 / 16,
-                  child: Stack(
-                    children: [
-                      // 長押しでページ削除
-                      GestureDetector(
-                        onLongPress: () => _confirmDelete(page),
-                        child: PageCanvas(page: page, interactive: true),
-                      ),
-                      // このシール帳の交換のきろく
-                      Positioned(
-                        right: 8,
-                        bottom: 104,
-                        child: _RoundIconButton(
-                          icon: Icons.history_rounded,
-                          onTap: () => showExchangeHistorySheet(
-                            context,
-                            pageId: page.id,
+            // スワイプ量に応じて紙をめくるように傾ける(ぺらっ)
+            return AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                var delta = 0.0;
+                if (_controller.position.haveDimensions &&
+                    _controller.page != null) {
+                  delta = (_controller.page! - i).clamp(-1.0, 1.0);
+                }
+                final tilt = delta * -0.45;
+                return Transform(
+                  alignment: delta > 0
+                      ? Alignment.topCenter
+                      : Alignment.bottomCenter,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateX(tilt)
+                    ..scaleByDouble(
+                      1 - delta.abs() * 0.04,
+                      1 - delta.abs() * 0.04,
+                      1,
+                      1,
+                    ),
+                  child: child,
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 6),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 9 / 16,
+                    child: Stack(
+                      children: [
+                        // 長押しでページ削除
+                        GestureDetector(
+                          onLongPress: () => _confirmDelete(page),
+                          child: PageCanvas(page: page, interactive: true),
+                        ),
+                        // このシール帳の交換のきろく
+                        Positioned(
+                          right: 8,
+                          bottom: 104,
+                          child: _RoundIconButton(
+                            icon: Icons.history_rounded,
+                            onTap: () => showExchangeHistorySheet(
+                              context,
+                              pageId: page.id,
+                            ),
                           ),
                         ),
-                      ),
-                      // カメラロールに保存
-                      Positioned(
-                        right: 8,
-                        bottom: 56,
-                        child: Consumer(
-                          builder: (context, ref, _) => _RoundIconButton(
-                            icon: Icons.save_alt_rounded,
-                            onTap: () =>
-                                savePageToCameraRoll(context, ref, page),
+                        // カメラロールに保存
+                        Positioned(
+                          right: 8,
+                          bottom: 56,
+                          child: Consumer(
+                            builder: (context, ref, _) => _RoundIconButton(
+                              icon: Icons.save_alt_rounded,
+                              onTap: () =>
+                                  savePageToCameraRoll(context, ref, page),
+                            ),
                           ),
                         ),
-                      ),
-                      // ページ操作(デコる)
-                      Positioned(
-                        right: 8,
-                        bottom: 8,
-                        child: _RoundIconButton(
-                          icon: Icons.edit_rounded,
-                          onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (_) => PageEditorPage(
-                                page: page,
-                                startEditing: true,
+                        // ページ操作(デコる)
+                        Positioned(
+                          right: 8,
+                          bottom: 8,
+                          child: _RoundIconButton(
+                            icon: Icons.edit_rounded,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => PageEditorPage(
+                                  page: page,
+                                  startEditing: true,
+                                ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -693,6 +724,45 @@ class PageCanvas extends ConsumerWidget {
                 },
               );
             },
+          ),
+          // 紙の質感: 左の綴じ影 + 右下のめくれそうな影 + うっすら光
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    stops: const [0, 0.05, 0.12, 1],
+                    colors: [
+                      Colors.black.withValues(alpha: 0.10),
+                      Colors.black.withValues(alpha: 0.04),
+                      Colors.transparent,
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    stops: const [0, 0.35, 0.92, 1],
+                    colors: [
+                      Colors.white.withValues(alpha: 0.14),
+                      Colors.transparent,
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.07),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
           // タイトル: 左上に大きめ表示(背景に埋もれないよう影付き)
           if (page.title.isNotEmpty && page.showTitle)

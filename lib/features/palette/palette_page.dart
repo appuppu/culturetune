@@ -106,26 +106,30 @@ class PaletteBody extends ConsumerWidget {
                         color: CTColors.textMain,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    const UseCaseCard(
-                      icon: Icons.content_cut_rounded,
-                      colorIndex: 0,
-                      title: '自動切り抜き',
-                      body: '写真を選ぶだけで被写体を切り抜いてシール化。質感やフチの色も選べるよ。まとめて作るのもOK',
+                    const SizedBox(height: 12),
+                    const UseCaseCarousel(
+                      items: [
+                        UseCaseItem(
+                          icon: Icons.content_cut_rounded,
+                          colorIndex: 0,
+                          title: '自動切り抜き',
+                          body: '写真を選ぶだけで被写体を切り抜いてシール化。質感やフチの色も選べるよ。まとめて作るのもOK',
+                        ),
+                        UseCaseItem(
+                          icon: Icons.volume_up_rounded,
+                          colorIndex: 1,
+                          title: 'ボイス&カード埋め込み',
+                          body: '声を録音したり、曲や店のカードを埋め込むと「タップすると鳴るシール」になるよ',
+                        ),
+                        UseCaseItem(
+                          icon: Icons.sticky_note_2_rounded,
+                          colorIndex: 3,
+                          title: 'メッセージカード',
+                          body: 'メッセージをメモ紙風のカードに。寄せ書きや交換日記にぴったり',
+                        ),
+                      ],
                     ),
-                    const UseCaseCard(
-                      icon: Icons.volume_up_rounded,
-                      colorIndex: 1,
-                      title: 'ボイス&カード埋め込み',
-                      body: '声を録音したり、曲や店のカードを埋め込むと「タップすると鳴るシール」になるよ',
-                    ),
-                    const UseCaseCard(
-                      icon: Icons.sticky_note_2_rounded,
-                      colorIndex: 3,
-                      title: 'メッセージシール',
-                      body: 'ひとことをメモ紙風のシールに。寄せ書きや交換日記にぴったり',
-                    ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 10),
                     FilledButton.icon(
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(

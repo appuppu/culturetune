@@ -642,26 +642,30 @@ class _PeerFieldState extends State<_PeerField> {
                   color: CTColors.textMain,
                 ),
               ),
-              const SizedBox(height: 16),
-              const UseCaseCard(
-                icon: Icons.wifi_tethering_rounded,
-                colorIndex: 0,
-                title: 'ふたりともレーダーをオン',
-                body: '上のスイッチをオンにすると、近くでアプリを開いているともだちがふわふわ浮かんでくるよ',
+              const SizedBox(height: 12),
+              const UseCaseCarousel(
+                items: [
+                  UseCaseItem(
+                    icon: Icons.wifi_tethering_rounded,
+                    colorIndex: 0,
+                    title: 'ふたりともレーダーをオン',
+                    body: '上のスイッチをオンにすると、近くでアプリを開いているともだちがふわふわ浮かんでくるよ',
+                  ),
+                  UseCaseItem(
+                    icon: Icons.touch_app_rounded,
+                    colorIndex: 1,
+                    title: 'ともだちをタップしてえらぶ',
+                    body: '浮かんできたともだちをタップして、わたすシール(まとめてOK)やシール帳をえらぶよ',
+                  ),
+                  UseCaseItem(
+                    icon: Icons.pin_rounded,
+                    colorIndex: 3,
+                    title: '4けたのコードで交換完了',
+                    body: '画面に出るコードを口で伝えて、あいてが入力したら転送スタート。音楽や地図もそのまま届くよ',
+                  ),
+                ],
               ),
-              const UseCaseCard(
-                icon: Icons.touch_app_rounded,
-                colorIndex: 1,
-                title: 'ともだちをタップしてえらぶ',
-                body: '浮かんできたともだちをタップして、わたすシール(まとめてOK)やシール帳をえらぶよ',
-              ),
-              const UseCaseCard(
-                icon: Icons.pin_rounded,
-                colorIndex: 3,
-                title: '4けたのコードで交換完了',
-                body: '画面に出るコードを口で伝えて、あいてが入力したら転送スタート。音楽や地図もそのまま届くよ',
-              ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 'しーるちょーはともだちと遊ぶともっと楽しい!\nまだ持っていない子には、ぜひ勧めてみてね',
                 textAlign: TextAlign.center,

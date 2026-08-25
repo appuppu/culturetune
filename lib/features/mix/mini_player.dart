@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:youtube_player_iframe/youtube_player_iframe.dart';
 
@@ -103,105 +104,153 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     const ytDark = Color(0xFF0F0F0F);
     const ytGrey = Color(0xFFAAAAAA);
     return Container(
-      margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-      decoration: BoxDecoration(
-        color: ytDark,
-        borderRadius: BorderRadius.circular(CTRadius.card),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black38,
-            blurRadius: 12,
-            offset: Offset(0, 4),
+          margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+          decoration: BoxDecoration(
+            color: ytDark,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black38,
+                blurRadius: 14,
+                offset: Offset(0, 5),
+              ),
+            ],
           ),
-        ],
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // WebView(プラットフォームビュー)はFlutterの角丸クリップが
-          // 効かないため、カードの内側に余白を取って収める
-          Padding(
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final w = constraints.maxWidth;
-                final h = math.max(200.0, w * 9 / 16);
-                return SizedBox(
-                  width: w,
-                  height: h,
-                  child: YoutubePlayer(
-                    controller: _controller!,
-                    aspectRatio: 16 / 9,
-                  ),
-                );
-              },
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        track.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          color: Colors.white,
-                        ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // WebView(プラットフォームビュー)はFlutterの角丸クリップが
+              // 効かないため、カードの内側に余白を取って収める
+              Padding(
+                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final w = constraints.maxWidth;
+                    final h = math.max(200.0, w * 9 / 16);
+                    return SizedBox(
+                      width: w,
+                      height: h,
+                      child: YoutubePlayer(
+                        controller: _controller!,
+                        aspectRatio: 16 / 9,
                       ),
-                      Text(
-                        [
-                          if (track.subtitle != null &&
-                              track.subtitle!.isNotEmpty)
-                            track.subtitle!,
-                          '${mix.index + 1}/${mix.queue.length}',
-                        ].join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 11, color: ytGrey),
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 34,
-                  icon: Icon(
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
+                child: Row(
+                  children: [
                     _playing
-                        ? Icons.pause_circle_filled_rounded
-                        : Icons.play_circle_filled_rounded,
-                  ),
-                  color: Colors.white,
-                  onPressed: () => _playing
-                      ? _controller?.pauseVideo()
-                      : _controller?.playVideo(),
+                        ? const _EqualizerBars()
+                        : Icon(
+                            Icons.music_note_rounded,
+                            size: 16,
+                            color: CTColors.primary,
+                          ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            track.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            [
+                              if (track.subtitle != null &&
+                                  track.subtitle!.isNotEmpty)
+                                track.subtitle!,
+                              '${mix.index + 1}/${mix.queue.length}',
+                            ].join(' · '),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 11, color: ytGrey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 34,
+                      icon: Icon(
+                        _playing
+                            ? Icons.pause_circle_filled_rounded
+                            : Icons.play_circle_filled_rounded,
+                      ),
+                      color: Colors.white,
+                      onPressed: () => _playing
+                          ? _controller?.pauseVideo()
+                          : _controller?.playVideo(),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 28,
+                      icon: const Icon(Icons.skip_next_rounded),
+                      color: Colors.white,
+                      onPressed: () =>
+                          ref.read(mixControllerProvider.notifier).next(),
+                    ),
+                    IconButton(
+                      visualDensity: VisualDensity.compact,
+                      icon: const Icon(Icons.close_rounded),
+                      color: ytGrey,
+                      onPressed: () =>
+                          ref.read(mixControllerProvider.notifier).stop(),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  iconSize: 28,
-                  icon: const Icon(Icons.skip_next_rounded),
-                  color: Colors.white,
-                  onPressed: () =>
-                      ref.read(mixControllerProvider.notifier).next(),
-                ),
-                IconButton(
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.close_rounded),
-                  color: ytGrey,
-                  onPressed: () =>
-                      ref.read(mixControllerProvider.notifier).stop(),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
+        )
+        .animate()
+        .fadeIn(duration: 220.ms)
+        .slideY(begin: 0.25, duration: 420.ms, curve: Curves.easeOutBack);
+  }
+}
+
+/// 再生中のイコライザー(3本のバーがぴょこぴょこ動く)
+class _EqualizerBars extends StatelessWidget {
+  const _EqualizerBars();
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 18,
+      height: 16,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          for (final (i, h) in const [10.0, 16.0, 7.0].indexed)
+            Container(
+                  width: 4,
+                  height: h,
+                  decoration: BoxDecoration(
+                    color: CTColors.primary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scaleY(
+                  begin: 1,
+                  end: 0.35,
+                  alignment: Alignment.bottomCenter,
+                  duration: (280 + i * 110).ms,
+                  curve: Curves.easeInOut,
+                ),
         ],
       ),
     );

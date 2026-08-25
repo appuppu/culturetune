@@ -340,26 +340,31 @@ class _EmptyVault extends StatelessWidget {
                 color: CTColors.textMain,
               ),
             ),
-            const SizedBox(height: 16),
-            const UseCaseCard(
-              icon: Icons.link_rounded,
-              colorIndex: 0,
-              title: '音楽・動画はURLを貼るだけ',
-              body: 'YouTubeやSpotifyのリンクを貼ると、タイトルとジャケット付きのカードに。タップでその場で再生できるよ',
+            const SizedBox(height: 12),
+            const UseCaseCarousel(
+              items: [
+                UseCaseItem(
+                  icon: Icons.link_rounded,
+                  colorIndex: 0,
+                  title: '音楽・動画はURLを貼るだけ',
+                  body:
+                      'YouTubeやSpotifyのリンクを貼ると、タイトルとジャケット付きのカードに。タップでその場で再生できるよ',
+                ),
+                UseCaseItem(
+                  icon: Icons.qr_code_scanner_rounded,
+                  colorIndex: 1,
+                  title: '本はバーコードでスキャン',
+                  body: '裏表紙のバーコードを読むだけで表紙つきのカードに。ご飯は写真と店の場所で登録できるよ',
+                ),
+                UseCaseItem(
+                  icon: Icons.menu_book_rounded,
+                  colorIndex: 5,
+                  title: 'シール帳に貼って遊ぶ',
+                  body: 'カードはシール帳に貼れて、タップで再生や地図がひらく。シールに埋め込むこともできるよ',
+                ),
+              ],
             ),
-            const UseCaseCard(
-              icon: Icons.qr_code_scanner_rounded,
-              colorIndex: 1,
-              title: '本はバーコードでスキャン',
-              body: '裏表紙のバーコードを読むだけで表紙つきのカードに。ご飯は写真と店の場所で登録できるよ',
-            ),
-            const UseCaseCard(
-              icon: Icons.menu_book_rounded,
-              colorIndex: 5,
-              title: 'シール帳に貼って遊ぶ',
-              body: 'カードはシール帳に貼れて、タップで再生や地図がひらく。シールに埋め込むこともできるよ',
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
             FilledButton.icon(
               onPressed: () => showPostCategorySheet(context),
               icon: const Icon(Icons.add_rounded, size: 18),
