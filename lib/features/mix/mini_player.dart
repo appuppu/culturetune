@@ -101,7 +101,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     // YouTubeのデベロッパーポリシー準拠:
     // 埋め込みプレイヤーは200x200px以上で、動画を隠さず表示する。
     // 見た目はYouTube Music風(ダーク基調・白アイコン)。
-    const ytDark = Color(0xFF0F0F0F);
     const ytGrey = Color(0xFFAAAAAA);
     return Container(
           margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
@@ -129,17 +128,27 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                   builder: (context, constraints) {
                     final w = constraints.maxWidth;
                     final h = math.max(200.0, w * 9 / 16);
-                    // WebViewを確実に角丸で切り抜くためsaveLayerでクリップ
-                    return ClipRRect(
-                      clipBehavior: Clip.antiAliasWithSaveLayer,
-                      borderRadius: BorderRadius.circular(18),
-                      child: SizedBox(
-                        width: w,
-                        height: h,
-                        child: YoutubePlayer(
-                          controller: _controller!,
-                          aspectRatio: 16 / 9,
-                        ),
+                    // WKWebViewはFlutterのクリップを無視するため、
+                    // 四隅にカード色の角マスクを上描きして角丸に見せる
+                    return SizedBox(
+                      width: w,
+                      height: h,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          YoutubePlayer(
+                            controller: _controller!,
+                            aspectRatio: 16 / 9,
+                          ),
+                          const IgnorePointer(
+                            child: CustomPaint(
+                              painter: _CornerMaskPainter(
+                                color: ytDark,
+                                radius: 18,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
@@ -224,6 +233,33 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
         .fadeIn(duration: 220.ms)
         .slideY(begin: 0.25, duration: 420.ms, curve: Curves.easeOutBack);
   }
+}
+
+const ytDark = Color(0xFF0F0F0F);
+
+/// プラットフォームビュー(WebView)の四隅を背景色で塗って角丸に見せる
+class _CornerMaskPainter extends CustomPainter {
+  const _CornerMaskPainter({required this.color, required this.radius});
+
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final outer = Path()..addRect(Offset.zero & size);
+    final inner = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
+      );
+    canvas.drawPath(
+      Path.combine(PathOperation.difference, outer, inner),
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_CornerMaskPainter oldDelegate) =>
+      color != oldDelegate.color || radius != oldDelegate.radius;
 }
 
 /// 再生中のイコライザー(3本のバーがぴょこぴょこ動く)
