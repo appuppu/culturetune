@@ -552,19 +552,6 @@ class _BeamPageState extends ConsumerState<BeamPage> {
                 onPeerTap: _onPeerTap,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 14),
-              child: Text(
-                'みつけたともだちをタップすると、シールやシール帳を渡せるよ。\n'
-                '遠くのともだちには、シールやシール帳の共有ボタンからLINEで送れるよ',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 11,
-                  height: 1.6,
-                  color: CTColors.textSub,
-                ),
-              ),
-            ),
           ],
         ),
       ),
