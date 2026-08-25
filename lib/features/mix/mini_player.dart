@@ -129,12 +129,17 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
                   builder: (context, constraints) {
                     final w = constraints.maxWidth;
                     final h = math.max(200.0, w * 9 / 16);
-                    return SizedBox(
-                      width: w,
-                      height: h,
-                      child: YoutubePlayer(
-                        controller: _controller!,
-                        aspectRatio: 16 / 9,
+                    // WebViewを確実に角丸で切り抜くためsaveLayerでクリップ
+                    return ClipRRect(
+                      clipBehavior: Clip.antiAliasWithSaveLayer,
+                      borderRadius: BorderRadius.circular(18),
+                      child: SizedBox(
+                        width: w,
+                        height: h,
+                        child: YoutubePlayer(
+                          controller: _controller!,
+                          aspectRatio: 16 / 9,
+                        ),
                       ),
                     );
                   },
