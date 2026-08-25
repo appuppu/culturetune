@@ -103,56 +103,37 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
     // 見た目はYouTube Music風(ダーク基調・白アイコン)。
     const ytGrey = Color(0xFFAAAAAA);
     return Container(
-          margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
           decoration: BoxDecoration(
             color: ytDark,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            border: Border(
+              top: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
+            ),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black38,
                 blurRadius: 14,
-                offset: Offset(0, 5),
+                offset: Offset(0, -4),
               ),
             ],
           ),
-          clipBehavior: Clip.antiAlias,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              // WebView(プラットフォームビュー)はFlutterの角丸クリップが
-              // 効かないため、カードの内側に余白を取って収める
-              Padding(
-                padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final w = constraints.maxWidth;
-                    final h = math.max(200.0, w * 9 / 16);
-                    // WKWebViewはFlutterのクリップを無視するため、
-                    // 四隅にカード色の角マスクを上描きして角丸に見せる
-                    return SizedBox(
-                      width: w,
-                      height: h,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          YoutubePlayer(
-                            controller: _controller!,
-                            aspectRatio: 16 / 9,
-                          ),
-                          const IgnorePointer(
-                            child: CustomPaint(
-                              painter: _CornerMaskPainter(
-                                color: ytDark,
-                                radius: 18,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+              // WKWebViewは角丸クリップが効かないため、
+              // パネルごと四角のドック型デザインにして全幅で見せる
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  final h = math.max(200.0, w * 9 / 16);
+                  return SizedBox(
+                    width: w,
+                    height: h,
+                    child: YoutubePlayer(
+                      controller: _controller!,
+                      aspectRatio: 16 / 9,
+                    ),
+                  );
+                },
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),
@@ -236,31 +217,6 @@ class _MiniPlayerState extends ConsumerState<MiniPlayer> {
 }
 
 const ytDark = Color(0xFF0F0F0F);
-
-/// プラットフォームビュー(WebView)の四隅を背景色で塗って角丸に見せる
-class _CornerMaskPainter extends CustomPainter {
-  const _CornerMaskPainter({required this.color, required this.radius});
-
-  final Color color;
-  final double radius;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final outer = Path()..addRect(Offset.zero & size);
-    final inner = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius)),
-      );
-    canvas.drawPath(
-      Path.combine(PathOperation.difference, outer, inner),
-      Paint()..color = color,
-    );
-  }
-
-  @override
-  bool shouldRepaint(_CornerMaskPainter oldDelegate) =>
-      color != oldDelegate.color || radius != oldDelegate.radius;
-}
 
 /// 再生中のイコライザー(3本のバーがぴょこぴょこ動く)
 class _EqualizerBars extends StatelessWidget {
